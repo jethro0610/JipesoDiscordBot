@@ -30,6 +30,10 @@ async def calculate_bets(betsChannel, finishedSet):
             winnerBetAmount += bet.amount
         
     await betsChannel.send('%s won the set. %d Jipesos were side bet' % (finishedSet.players[finishedSet.winner], totalBetAmount))
+
+    if winnerBetAmount == 0.0 or totalBetAmount == 0.0:
+        return
+    
     for betKey in finishedSet.bets:
         bet = finishedSet.bets[betKey]
         percentOfPot = bet.amount / winnerBetAmount
