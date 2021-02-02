@@ -27,6 +27,9 @@ def update_sets(smashSets, smashggKey, eventId):
     headers = {'Authorization' : 'Bearer %s' % smashggKey}
     output = requests.post(url, json = json, headers = headers)
     jsonSets = output.json()['data']['event']['sets']['nodes']
+    
+    if jsonSets == None:
+        return
 
     for jsonSet in jsonSets:
         if jsonSet['startedAt'] != None:
@@ -40,9 +43,9 @@ def update_sets(smashSets, smashggKey, eventId):
                     newSmashSet.players[slot['entrant']['id']] = slot['entrant']['name']
 
             if jsonSet['winnerId'] != None:
-                #if not jsonSet['id'] in smashSets:
-                    #newSmashSet.ended = False
-                    #newSmashSet.started = False
+                if not jsonSet['id'] in smashSets:
+                    newSmashSet.ended = True
+                    newSmashSet.started = True
                     
                 newSmashSet.ending = True
                 newSmashSet.winner = jsonSet['winnerId']
