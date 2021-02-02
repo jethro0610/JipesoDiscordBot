@@ -1,10 +1,14 @@
-class Player:
-    def __init__(self, name, id):
-        self.name = name
-        self.id = id
+class SmashSet:
+    def __init__(self):
+        self.players = dict()
+        self.bets = dict()
+        self.startTime = 0
+        self.started = False
+        self.winner = None
+        self.ending = False
+        self.ended = False
 
-class Set:
-    def __init__(self, player1, player2):
-        self.active = False
-        self.player1 = player1
-        self.player2 = player2
+class Bet:
+    def __init__(self, predictionId, amount):
+        self.predictionId = predictionId
+        self.amount = amount
