@@ -38,13 +38,13 @@ async def calculate_bets(betsChannel, finishedSet):
         
 @commands.command()
 async def betIDs(ctx, setId, predictionId, amount):
-    if(not int(setId) in smashSets):
+    if not int(setId) in smashSets:
         await ctx.channel.send('<@%s> Invalid set ID' % (ctx.author.id))
         return
 
     setToBet = smashSets[int(setId)]
-    if(not ctx.author.id in setToBet.bets):
-        if(int(predictionId) in setToBet.players):
+    if not ctx.author.id in setToBet.bets:
+        if int(predictionId) in setToBet.players:
             setToBet.bets[ctx.author.id] = Bet(int(predictionId), int(amount))
             await ctx.channel.send('<@%s> has placed a %d Jipeso bet on set %d' % (ctx.author.id, int(amount), int(setId)))
         else:
@@ -55,21 +55,29 @@ async def betIDs(ctx, setId, predictionId, amount):
 @commands.command()
 async def bet(ctx, predictionName, amount):
     setToBet = None
-    predictionId = None
+    predictionInt = 0
+    opponentInt = 0
     
     for setKey in smashSets:
         smashSet = smashSets[setKey]
+        counter = 0
         for playerKey in smashSet.players:
             if smashSet.players[playerKey] == predictionName:
                 setToBet = smashSet
                 predictionId = playerKey
+                predictionInt = counter
+            counter += 1
         
     if setToBet == None:
         await ctx.channel.send('<@%s> Couldn\'t find match/player to bet on' % (ctx.author.id, int(amount), predictionName))
+        return
+
+    opponentInt = 1 - predictionInt
+    playerKeyList = list(smashSet.players)
     
     if not ctx.author.id in setToBet.bets:
         setToBet.bets[ctx.author.id] = Bet(int(predictionId), int(amount))
-        await ctx.channel.send('<@%s> has placed a %d Jipeso bet on %s\'s set' % (ctx.author.id, int(amount), predictionName))
+        await ctx.channel.send('<@%s> has placed a %d Jipeso bet on %s\'s set vs. %s' % (ctx.author.id, int(amount), predictionName, smashSet.players[playerKeyList[opponentInt]]))
     else:
         await ctx.channel.send('<@%s> You already placed a bet on this set' % (ctx.author.id))
 
@@ -81,21 +89,13 @@ async def update_sets():
         smashSet = smashSets[smashSetKey]
         playerKeyList = list(smashSet.players)
         if smashSet.started == False:
-            startString = 'Set started with ID %s: %s(%s) vs. %s(%s)' % (smashSetKey,
-                                                                            smashSet.players[playerKeyList[0]],
-                                                                            playerKeyList[0],
-                                                                            smashSet.players[playerKeyList[1]],
-                                                                            playerKeyList[1])
+            startString = '%s vs. %s has started' % (smashSet.players[playerKeyList[0]], smashSet.players[playerKeyList[1]])
             print(startString)
             await betsChannel.send(startString)
             smashSet.started = True
            
         if smashSet.ending == True and smashSet.ended == False:
-            endString = 'Set ended with ID %s: %s(%s) vs. %s(%s)' % (smashSetKey,
-                                                                            smashSet.players[playerKeyList[0]],
-                                                                            playerKeyList[0],
-                                                                            smashSet.players[playerKeyList[1]],
-                                                                            playerKeyList[1])
+            endString = '%s vs. %s has ended' % (smashSet.players[playerKeyList[0]], smashSet.players[playerKeyList[1]])
             print(endString)
             await betsChannel.send(endString)
             await calculate_bets(betsChannel, smashSet)
