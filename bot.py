@@ -37,7 +37,7 @@ async def calculate_bets(betsChannel, finishedSet):
         await betsChannel.send('<@%s> earned %d Jipesos(%d%% of pot) in bettings' % (betKey, earnings, percentOfPot * 100))
         
 @commands.command()
-async def bet(ctx, setId, predictionId, amount):
+async def betIDs(ctx, setId, predictionId, amount):
     if(not int(setId) in smashSets):
         await ctx.channel.send('<@%s> Invalid set ID' % (ctx.author.id))
         return
@@ -49,6 +49,27 @@ async def bet(ctx, setId, predictionId, amount):
             await ctx.channel.send('<@%s> has placed a %d Jipeso bet on set %d' % (ctx.author.id, int(amount), int(setId)))
         else:
             await ctx.channel.send('<@%s> Invalid player ID' % (ctx.author.id))
+    else:
+        await ctx.channel.send('<@%s> You already placed a bet on this set' % (ctx.author.id))
+
+@commands.command()
+async def bet(ctx, predictionName, amount):
+    setToBet = None
+    predictionId = None
+    
+    for setKey in smashSets:
+        smashSet = smashSets[setKey]
+        for playerKey in smashSet.players:
+            if smashSet.players[playerKey] == predictionName:
+                setToBet = smashSet
+                predictionId = playerKey
+        
+    if setToBet == None:
+        await ctx.channel.send('<@%s> Couldn\'t find match/player to bet on' % (ctx.author.id, int(amount), predictionName))
+    
+    if not ctx.author.id in setToBet.bets:
+        setToBet.bets[ctx.author.id] = Bet(int(predictionId), int(amount))
+        await ctx.channel.send('<@%s> has placed a %d Jipeso bet on %s\'s set' % (ctx.author.id, int(amount), predictionName))
     else:
         await ctx.channel.send('<@%s> You already placed a bet on this set' % (ctx.author.id))
 
@@ -85,6 +106,7 @@ async def on_ready():
     print(f'{bot.user} has connected to Discord!')
     update_sets.start()
     
+bot.add_command(betIDs)
 bot.add_command(bet)
 bot.run(discordKey)
 
