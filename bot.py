@@ -297,8 +297,12 @@ async def starttourney(ctx, newId):
     if ctx.message.author.guild_permissions.administrator == False:
         return
     
+    eventJson, bracketLink = smashsetfunctions.get_event_standings(newId, smashggKey)
+    if(eventJson == None):
+        await ctx.channel.send('Tournament not found')
+        return
+
     phaseGroupId = newId
-    eventJson, bracketLink = smashsetfunctions.get_event_standings(phaseGroupId, smashggKey)
     tourneyName = eventJson['tournament']['name']
     eventName = eventJson['name']
 

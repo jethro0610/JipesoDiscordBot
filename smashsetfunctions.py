@@ -41,7 +41,10 @@ def get_event_standings(phaseGroupId, smashggKey):
     json = {'query' : query }
     headers = {'Authorization' : 'Bearer %s' % smashggKey}
     output = requests.post(url, json = json, headers = headers)
-
+    
+    if output.json()['data']['phaseGroup'] == None:
+        return None, None
+    
     eventSlug = output.json()['data']['phaseGroup']['phase']['event']['slug']
     urlPhaseId = str(output.json()['data']['phaseGroup']['phase']['id'])
     urlPhaseGroupId = str(output.json()['data']['phaseGroup']['id'])
