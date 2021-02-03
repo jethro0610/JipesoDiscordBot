@@ -54,7 +54,7 @@ def mention_to_ggId(mention):
         print("Couldn't find ggId from mention")
         return
 
-    return key_list[val_list.index(mention)]
+    return str(key_list[val_list.index(mention)])
     
 def ggId_to_jipesoId(ggId):
     if str(ggId) in ggIds:
@@ -125,7 +125,7 @@ async def bet(ctx, predictionName, amount):
         
         counter = 0
         for playerKey in smashSet.players:
-            if smashSet.players[playerKey]['name'] == predictionName or str(smashSet.players[playerKey]['ggId']) == str(predictionGGId):
+            if smashSet.players[playerKey]['name'] == predictionName or smashSet.players[playerKey]['ggId'] == predictionGGId:
                 setToBet = smashSet
                 predictionId = playerKey
                 predictionInt = counter
