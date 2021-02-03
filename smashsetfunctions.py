@@ -8,6 +8,19 @@ def get_event_standings(phaseGroupId, smashggKey):
             {
                 phaseGroup(id: "%s"){
                     id
+                    standings {
+                        nodes {
+                            placement
+                            entrant{
+                                participants {
+                                    player {
+                                        id
+                                        gamerTag
+                                    }
+                                }
+                            }
+                        }
+                    }
                     phase {
                         id
                         event {
@@ -16,22 +29,6 @@ def get_event_standings(phaseGroupId, smashggKey):
                             numEntrants
                             tournament {
                                 name
-                            }
-                            standings(query: {
-                                perPage: 16
-                                page: 1
-                            }){
-                                nodes {
-                                    placement
-                                    entrant{
-                                        participants {
-                                            player {
-                                                id
-                                                gamerTag
-                                            }
-                                        }
-                                    }
-                                }
                             }
                         }
                     }
@@ -50,7 +47,7 @@ def get_event_standings(phaseGroupId, smashggKey):
     urlPhaseGroupId = str(output.json()['data']['phaseGroup']['id'])
     bracketLink = 'https://smash.gg/' + eventSlug + '/brackets/' + urlPhaseId + '/' + urlPhaseGroupId
     
-    return output.json()['data']['phaseGroup']['phase']['event'], bracketLink
+    return output.json()['data']['phaseGroup'], bracketLink
     
 def get_gg_id(ggSlug, smashggKey):
     url = 'https://api.smash.gg/gql/alpha'

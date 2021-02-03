@@ -256,8 +256,9 @@ async def linkgg(ctx, ggSlug):
 async def pay_results(messageChannel):
     global phaseGroupId
     global smashggKey
-    eventJson, bracketLink = smashsetfunctions.get_event_standings(phaseGroupId, smashggKey)
-    resultsJson = eventJson['standings']['nodes']
+    phaseGroupJson, bracketLink = smashsetfunctions.get_event_standings(phaseGroupId, smashggKey)
+    eventJson = phaseGroupJson['phase']['event']
+    resultsJson = phaseGroupJson['standings']['nodes']
 
     tourneyName = eventJson['tournament']['name']
     eventName = eventJson['name']
@@ -297,14 +298,14 @@ async def starttourney(ctx, newId):
     if ctx.message.author.guild_permissions.administrator == False:
         return
     
-    eventJson, bracketLink = smashsetfunctions.get_event_standings(newId, smashggKey)
-    if(eventJson == None):
+    phaseGroupJson, bracketLink = smashsetfunctions.get_event_standings(newId, smashggKey)
+    if(phaseGroupJson == None):
         await ctx.channel.send('Tournament not found')
         return
 
     phaseGroupId = newId
-    tourneyName = eventJson['tournament']['name']
-    eventName = eventJson['name']
+    tourneyName = phaseGroupJson['phase']['event']['tournament']['name']
+    eventName = phaseGroupJson['phase']['event']['name']
 
     await ctx.channel.send('Started Tournament: ' + tourneyName + ' | ' + eventName + '\n' + bracketLink)
     
