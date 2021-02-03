@@ -154,6 +154,7 @@ async def calculate_bets(betsChannel, finishedSet):
 async def bet(ctx, predictionName, amount):
     global smashSets
     
+    amount = amount.replace('-','')
     amount = float(amount)
     beterBalance = get_balance(ctx.author.id)
     
@@ -350,7 +351,29 @@ async def bracket(ctx):
 
     await ctx.channel.send('<@!%s> %s' % (ctx.author.id, bracketLink))
 
+@commands.command()
+async def pay(ctx, otherId, amount):
+    global jipesoUsers
+    payerId = str(ctx.author.id)
+    otherId = str(otherId)
+    otherId = otherId.replace('<', '')
+    otherId = otherId.replace('@', '')
+    otherId = otherId.replace('!', '')
+    otherId = otherId.replace('>', '')
+    amount = amount.replace('-','')
+    amount = float(amount)
+
+    try:
+        await bot.fetch_user(otherId)
+    except:
+        await ctx.channel.send('<@!%s> Member not found' % (payerId))
+        return
     
+    add_balance(payerId, -amount)
+    add_balance(otherId, amount)
+
+    await ctx.channel.send('<@!%s> paid <@!%s> %s%d' % (payerId, otherId, jipesoText, amount))
+
 @bot.event
 async def on_ready():
     global jipesoText
@@ -367,4 +390,5 @@ bot.add_command(stoptourney)
 bot.add_command(stoptourneyresults)
 bot.add_command(bracket)
 bot.add_command(linkgg)
+bot.add_command(pay)
 bot.run(discordKey)
