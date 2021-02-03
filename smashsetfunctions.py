@@ -2,28 +2,33 @@ import requests
 import json
 from jipesoclasses import SmashSet
 
-def get_event_standings(phaseId, smashggKey):
+def get_event_standings(phaseGroupId, smashggKey):
     url = 'https://api.smash.gg/gql/alpha'
     query = """
             {
-                phase(id: "%s"){
-                    event {
-                        name
-                        numEntrants
-                        tournament {
+                phaseGroup(id: "%s"){
+                    id
+                    phase {
+                        id
+                        event {
+                            slug
                             name
-                        }
-                        standings(query: {
-                            perPage: 16
-                            page: 1
-                        }){
-                            nodes {
-                                placement
-                                entrant{
-                                    participants {
-                                        player {
-                                            id
-                                            gamerTag
+                            numEntrants
+                            tournament {
+                                name
+                            }
+                            standings(query: {
+                                perPage: 16
+                                page: 1
+                            }){
+                                nodes {
+                                    placement
+                                    entrant{
+                                        participants {
+                                            player {
+                                                id
+                                                gamerTag
+                                            }
                                         }
                                     }
                                 }
@@ -32,11 +37,17 @@ def get_event_standings(phaseId, smashggKey):
                     }
                 }
             }
-            """ % phaseId
+            """ % phaseGroupId
     json = {'query' : query }
     headers = {'Authorization' : 'Bearer %s' % smashggKey}
     output = requests.post(url, json = json, headers = headers)
-    return output.json()['data']['phase']['event']
+
+    eventSlug = output.json()['data']['phaseGroup']['phase']['event']['slug']
+    urlPhaseId = str(output.json()['data']['phaseGroup']['phase']['id'])
+    urlPhaseGroupId = str(output.json()['data']['phaseGroup']['id'])
+    bracketLink = 'https://smash.gg/' + eventSlug + '/brackets/' + urlPhaseId + '/' + urlPhaseGroupId
+    
+    return output.json()['data']['phaseGroup']['phase']['event'], bracketLink
     
 def get_gg_id(ggSlug, smashggKey):
     url = 'https://api.smash.gg/gql/alpha'
@@ -57,24 +68,26 @@ def get_gg_id(ggSlug, smashggKey):
     else:
         return None
 
-def update_sets(smashSets, smashggKey, phaseId):
+def update_sets(smashSets, smashggKey, phaseGroupId):
     url = 'https://api.smash.gg/gql/alpha'
     query = """
             {
-                phase(id: "%s"){
-                    event {
-                        sets {
-                            nodes {
-                                id
-                                startedAt
-                                winnerId
-                                slots {
-                                    entrant {
-                                        id
-                                        participants {
-                                            player {
-                                                id
-                                                gamerTag
+                phaseGroup(id: "%s"){
+                    phase {
+                        event {
+                            sets {
+                                nodes {
+                                    id
+                                    startedAt
+                                    winnerId
+                                    slots {
+                                        entrant {
+                                            id
+                                            participants {
+                                                player {
+                                                    id
+                                                    gamerTag
+                                                }
                                             }
                                         }
                                     }
@@ -84,11 +97,11 @@ def update_sets(smashSets, smashggKey, phaseId):
                     }
                 }
             }
-            """ % phaseId
+            """ % phaseGroupId
     json = {'query' : query }
     headers = {'Authorization' : 'Bearer %s' % smashggKey}
     output = requests.post(url, json = json, headers = headers)
-    jsonSets = output.json()['data']['phase']['event']['sets']['nodes']
+    jsonSets = output.json()['data']['phaseGroup']['phase']['event']['sets']['nodes']
     
     if jsonSets == None:
         return
