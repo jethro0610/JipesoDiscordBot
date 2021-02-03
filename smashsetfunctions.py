@@ -2,6 +2,25 @@ import requests
 import json
 from jipesoclasses import SmashSet
 
+def get_gg_id(ggSlug, smashggKey):
+    url = 'https://api.smash.gg/gql/alpha'
+    query = """
+            {
+                user(slug: "user/%s"){
+                    player {
+                        id
+                    }
+                }
+            }
+            """ % ggSlug
+    json = {'query' : query }
+    headers = {'Authorization' : 'Bearer %s' % smashggKey}
+    output = requests.post(url, json = json, headers = headers)
+    if output.json()['data']['user'] != None:
+        return output.json()['data']['user']['player']['id']
+    else:
+        return None
+
 def update_sets(smashSets, smashggKey, eventId):
     url = 'https://api.smash.gg/gql/alpha'
     query = """

@@ -8,11 +8,18 @@ from discord.ext import commands, tasks
 from jipesoclasses import SmashSet
 from jipesoclasses import Bet
 
+config = None
+jipesoUsers = None
+ggIds = None
+
 with open('config.json') as json_data_file:
     config = json.load(json_data_file)
 
 with open('jipeso.json') as json_data_file:
     jipesoUsers = json.load(json_data_file)
+
+with open('ggIds.json') as json_data_file:
+    ggIds = json.load(json_data_file)
 
 smashggKey = config['smashggKey']
 eventId = config['eventId']
@@ -23,6 +30,37 @@ bot = commands.Bot(command_prefix='!')
 
 smashSets = dict()
 bets = None
+
+def get_mention(jipesoId):
+    return '<@!%s>' % jipesoId
+
+def get_player_string(player):
+    playerJipesoId = ggId_to_jipesoId(player['ggId'])
+    if playerJipesoId != False:
+        return get_mention(playerJipesoId)
+    else:
+        return player['name']
+
+def mention_to_ggId(mention):
+    mention = mention.replace('<', '')
+    mention = mention.replace('@', '')
+    mention = mention.replace('!', '')
+    mention = mention.replace('>', '')
+
+    key_list = list(ggIds.keys())
+    val_list = list(ggIds.values())
+
+    if not mention in val_list:
+        print("Couldn't find ggId from mention")
+        return
+
+    return key_list[val_list.index(mention)]
+    
+def ggId_to_jipesoId(ggId):
+    if str(ggId) in ggIds:
+        return ggIds[str(ggId)]
+    else:
+        return False
 
 def ensure_jipesoUser_exists(jipesoUserId):
     if not str(jipesoUserId) in jipesoUsers:
@@ -51,7 +89,7 @@ async def calculate_bets(betsChannel, finishedSet):
         if bet.predictionId == finishedSet.winner:
             winnerBetAmount += bet.amount
         
-    await betsChannel.send('%s won the set. %d Jipesos were side bet' % (finishedSet.players[finishedSet.winner]['name'], totalBetAmount))
+    await betsChannel.send('%s won the set. %d Jipesos were side bet' % (get_player_string(finishedSet.players[finishedSet.winner]), totalBetAmount))
 
     if winnerBetAmount == 0.0 or totalBetAmount == 0.0:
         return
@@ -75,6 +113,10 @@ async def bet(ctx, predictionName, amount):
     setToBet = None
     predictionInt = 0
     opponentInt = 0
+
+    predictionGGId = 'fill'
+    if '<' in predictionName and '>' in predictionName and '@' in predictionName:
+        predictionGGId = mention_to_ggId(predictionName)
     
     for setKey in smashSets:
         smashSet = smashSets[setKey]
@@ -83,7 +125,7 @@ async def bet(ctx, predictionName, amount):
         
         counter = 0
         for playerKey in smashSet.players:
-            if smashSet.players[playerKey]['name'] == predictionName:
+            if smashSet.players[playerKey]['name'] == predictionName or str(smashSet.players[playerKey]['ggId']) == str(predictionGGId):
                 setToBet = smashSet
                 predictionId = playerKey
                 predictionInt = counter
@@ -96,6 +138,7 @@ async def bet(ctx, predictionName, amount):
     opponentInt = 1 - predictionInt
     playerKeyList = list(setToBet.players)
     opponent = setToBet.players[playerKeyList[opponentInt]]
+    prediction = setToBet.players[playerKeyList[predictionInt]]
     
     if not ctx.author.id in setToBet.bets:
         if beterBalance < amount:
@@ -104,7 +147,7 @@ async def bet(ctx, predictionName, amount):
     
         setToBet.bets[ctx.author.id] = Bet(int(predictionId), amount)
         set_balance(ctx.author.id, beterBalance - amount)
-        await ctx.channel.send('<@!%s> has placed a %d Jipeso bet on %s\'s set vs. %s. Their balance is now %d Jipesos' % (ctx.author.id, amount, predictionName, opponent['name'], get_balance(ctx.author.id)))
+        await ctx.channel.send('<@!%s> has placed a %d Jipeso bet on %s\'s set vs. %s. Their balance is now %d Jipesos' % (ctx.author.id, amount, get_player_string(prediction), get_player_string(opponent), get_balance(ctx.author.id)))
     else:
         await ctx.channel.send('<@!%s> You already placed a bet on this set' % (ctx.author.id))
 
@@ -121,17 +164,32 @@ async def update_sets():
         smashSet = smashSets[smashSetKey]
         playerKeyList = list(smashSet.players)
         if smashSet.started == False:
-            startString = '%s vs. %s has started' % (smashSet.players[playerKeyList[0]]['name'], smashSet.players[playerKeyList[1]]['name'])
+            startString = '%s vs. %s has started' % (get_player_string(smashSet.players[playerKeyList[0]]), get_player_string(smashSet.players[playerKeyList[1]]))
             print(startString)
             await betsChannel.send(startString)
             smashSet.started = True
            
         if smashSet.ending == True and smashSet.ended == False:
-            endString = '%s vs. %s has ended' % (smashSet.players[playerKeyList[0]]['name'], smashSet.players[playerKeyList[1]]['name'])
+            endString = '%s vs. %s has ended' % (get_player_string(smashSet.players[playerKeyList[0]]), get_player_string(smashSet.players[playerKeyList[1]]))
             print(endString)
             await betsChannel.send(endString)
             await calculate_bets(betsChannel, smashSet)
             smashSet.ended = True
+
+@commands.command()
+async def linkgg(ctx, ggSlug):
+    ggId = str(smashsetfunctions.get_gg_id(ggSlug, smashggKey))
+    if ggId != None:
+        if ggId in ggIds:
+            await ctx.channel.send('<@!%s> Has already been linked to another discord' % ctx.author.id)
+        else:
+            ggIds[ggId] = str(ctx.author.id)
+            await ctx.channel.send('<@!%s> SmashGG linked succesfully!' % ctx.author.id)
+    else:
+        await ctx.channel.send('<@!%s> Couldn\'t find account to link to' % ctx.author.id)
+        
+    with open('ggIds.json', 'w') as json_data_file:
+        json.dump(ggIds, json_data_file)
 
 @commands.command()
 async def echo(ctx, echo):
@@ -148,4 +206,5 @@ atexit.register(save_jipesos)
 bot.add_command(bet)
 bot.add_command(balance)
 bot.add_command(echo)
+bot.add_command(linkgg)
 bot.run(discordKey)
