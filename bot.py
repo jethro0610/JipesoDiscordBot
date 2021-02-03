@@ -25,6 +25,8 @@ smashggKey = config['smashggKey']
 eventId = config['eventId']
 discordKey = config['discordKey']
 betsChannelId = config['betsChannelId']
+winnersPay = config['winnersPay']
+losersPay = config['losersPay']
 
 bot = commands.Bot(command_prefix='!')
 
@@ -36,7 +38,7 @@ def get_mention(jipesoId):
 
 def get_player_string(player):
     playerJipesoId = ggId_to_jipesoId(player['ggId'])
-    if playerJipesoId != False:
+    if playerJipesoId != None:
         return get_mention(playerJipesoId)
     else:
         return player['name']
@@ -60,7 +62,7 @@ def ggId_to_jipesoId(ggId):
     if str(ggId) in ggIds:
         return ggIds[str(ggId)]
     else:
-        return False
+        return None
 
 def ensure_jipesoUser_exists(jipesoUserId):
     if not str(jipesoUserId) in jipesoUsers:
@@ -74,8 +76,15 @@ def set_balance(jipesoUserId, amount):
     ensure_jipesoUser_exists(jipesoUserId)
     jipesoUsers[str(jipesoUserId)]['balance'] = amount
 
-@tasks.loop(seconds=60.0)
-async def save_jipesos():
+def add_balance(jipesoUserId, amount):
+    ensure_jipesoUser_exists(jipesoUserId)
+    jipesoUsers[str(jipesoUserId)]['balance'] = jipesoUsers[str(jipesoUserId)]['balance'] + amount
+    
+@tasks.loop(seconds=120.0)
+async def save_jipesos_loop():
+    save_jipesos()
+
+def save_jipesos():
     with open('jipeso.json', 'w') as json_data_file:
         json.dump(jipesoUsers, json_data_file)
     print("Saved.")
@@ -83,14 +92,38 @@ async def save_jipesos():
 async def calculate_bets(betsChannel, finishedSet):
     totalBetAmount = 0.0
     winnerBetAmount = 0.0
+    winnerInt = None
+    loserInt = None
+    counter = 0
+    
     for betKey in finishedSet.bets:
         bet = finishedSet.bets[betKey]
         totalBetAmount += bet.amount
         if bet.predictionId == finishedSet.winner:
             winnerBetAmount += bet.amount
-        
-    await betsChannel.send('%s won the set. %d Jipesos were side bet' % (get_player_string(finishedSet.players[finishedSet.winner]), totalBetAmount))
 
+    for player in finishedSet.players:
+        if player == finishedSet.winner:
+            winnerInt = counter
+        counter += 1
+
+    loserInt = 1 - winnerInt
+    playerKeyList = list(finishedSet.players)
+    losingPlayer = finishedSet.players[playerKeyList[loserInt]]
+    winningPlayer = finishedSet.players[playerKeyList[winnerInt]]
+    
+    await betsChannel.send('%s won the set. %d Jipesos were side bet' % (get_player_string(winningPlayer), totalBetAmount))
+
+    winnerJipesoId = ggId_to_jipesoId(winningPlayer['ggId'])
+    if winnerJipesoId != None:
+        add_balance(winnerJipesoId, winnersPay)
+        await betsChannel.send('%s earned %d Jipeso\'s for winning' % (get_mention(winnerJipesoId), winnersPay))
+
+    loserJipesoId = ggId_to_jipesoId(losingPlayer['ggId'])
+    if loserJipesoId != None:
+        add_balance(loserJipesoId, losersPay)
+        await betsChannel.send('%s earned %d Jipeso\'s for trying' % (get_mention(loserJipesoId), losersPay))
+        
     if winnerBetAmount == 0.0 or totalBetAmount == 0.0:
         return
     
@@ -103,7 +136,7 @@ async def calculate_bets(betsChannel, finishedSet):
         set_balance(betKey, beterBalance)
         await betsChannel.send('<@!%s> earned %d Jipesos(%d%% of pot) in bettings. Their balance is now %d' % (betKey, earnings, percentOfPot * 100, beterBalance))
 
-    await save_jipesos()
+    save_jipesos()
     
 @commands.command()
 async def bet(ctx, predictionName, amount):
@@ -200,7 +233,7 @@ async def echo(ctx, echo):
 async def on_ready():
     print(f'{bot.user} has connected to Discord!')
     update_sets.start()
-    save_jipesos.start()
+    save_jipesos_loop.start()
 
 atexit.register(save_jipesos)
 bot.add_command(bet)
