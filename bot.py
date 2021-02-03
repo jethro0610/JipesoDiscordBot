@@ -22,7 +22,7 @@ with open('ggIds.json') as json_data_file:
     ggIds = json.load(json_data_file)
 
 smashggKey = config['smashggKey']
-eventId = config['eventId']
+eventId = None
 discordKey = config['discordKey']
 betsChannelId = config['betsChannelId']
 winnersPay = config['winnersPay']
@@ -44,6 +44,7 @@ def get_player_string(player):
         return player['name']
 
 def mention_to_ggId(mention):
+    global ggIds
     mention = mention.replace('<', '')
     mention = mention.replace('@', '')
     mention = mention.replace('!', '')
@@ -59,24 +60,30 @@ def mention_to_ggId(mention):
     return str(key_list[val_list.index(mention)])
     
 def ggId_to_jipesoId(ggId):
+    global ggIds
     if str(ggId) in ggIds:
         return ggIds[str(ggId)]
     else:
         return None
 
 def ensure_jipesoUser_exists(jipesoUserId):
+    global jipesoUsers
     if not str(jipesoUserId) in jipesoUsers:
         jipesoUsers[str(jipesoUserId)] = {'balance' : 100}
 
 def get_balance(jipesoUserId):
+    global jipesoUsers
     ensure_jipesoUser_exists(jipesoUserId)
     return jipesoUsers[str(jipesoUserId)]['balance']
 
 def set_balance(jipesoUserId, amount):
+    global jipesoUsers
     ensure_jipesoUser_exists(jipesoUserId)
     jipesoUsers[str(jipesoUserId)]['balance'] = amount
 
 def add_balance(jipesoUserId, amount):
+    global jipesoUsers
+    
     ensure_jipesoUser_exists(jipesoUserId)
     jipesoUsers[str(jipesoUserId)]['balance'] = jipesoUsers[str(jipesoUserId)]['balance'] + amount
     
@@ -85,10 +92,11 @@ async def save_jipesos_loop():
     save_jipesos()
 
 def save_jipesos():
+    global jipesoUsers
     with open('jipeso.json', 'w') as json_data_file:
         json.dump(jipesoUsers, json_data_file)
     print("Saved.")
-
+    
 async def calculate_bets(betsChannel, finishedSet):
     totalBetAmount = 0.0
     winnerBetAmount = 0.0
@@ -140,6 +148,8 @@ async def calculate_bets(betsChannel, finishedSet):
     
 @commands.command()
 async def bet(ctx, predictionName, amount):
+    global smashSets
+    
     amount = float(amount)
     beterBalance = get_balance(ctx.author.id)
     
@@ -191,8 +201,15 @@ async def balance(ctx):
 
 @tasks.loop(seconds=5.0)
 async def update_sets():
+    global eventId
+    global smashSets
+    global smashggKey
+    
+    if eventId == None:
+        return
+    
     smashsetfunctions.update_sets(smashSets, smashggKey, eventId)
-    betsChannel = bot.get_channel(806053690543702037)
+    betsChannel = bot.get_channel(int(betsChannelId))
     for smashSetKey in smashSets:
         smashSet = smashSets[smashSetKey]
         playerKeyList = list(smashSet.players)
@@ -211,6 +228,8 @@ async def update_sets():
 
 @commands.command()
 async def linkgg(ctx, ggSlug):
+    global ggIds
+    
     ggId = str(smashsetfunctions.get_gg_id(ggSlug, smashggKey))
     if ggId != None:
         if ggId in ggIds:
@@ -225,9 +244,24 @@ async def linkgg(ctx, ggSlug):
         json.dump(ggIds, json_data_file)
 
 @commands.command()
-async def echo(ctx, echo):
-    print(echo)
-    await ctx.channel.send(echo)
+async def starttourney(ctx, newId):
+    global eventId
+    
+    if ctx.message.author.guild_permissions.administrator == False:
+        return
+    
+    eventId = newId
+    await ctx.channel.send('Started tournament!')
+
+@commands.command()
+async def stoptourney(ctx):
+    global eventId
+    
+    if ctx.message.author.guild_permissions.administrator == False:
+        return
+    
+    eventId = None
+    await ctx.channel.send('Tournament over')
     
 @bot.event
 async def on_ready():
@@ -238,6 +272,7 @@ async def on_ready():
 atexit.register(save_jipesos)
 bot.add_command(bet)
 bot.add_command(balance)
-bot.add_command(echo)
+bot.add_command(starttourney)
+bot.add_command(stoptourney)
 bot.add_command(linkgg)
 bot.run(discordKey)
