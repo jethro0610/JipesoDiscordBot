@@ -12,7 +12,7 @@ config = None
 jipesoUsers = None
 ggIds = None
 payouts = None
-eventId = None
+phaseId = None
 smashSets = dict()
 
 with open('config.json') as json_data_file:
@@ -203,14 +203,14 @@ async def balance(ctx):
 
 @tasks.loop(seconds=5.0)
 async def update_sets():
-    global eventId
+    global phaseId
     global smashSets
     global smashggKey
     
-    if eventId == None:
+    if phaseId == None:
         return
     
-    smashsetfunctions.update_sets(smashSets, smashggKey, eventId)
+    smashsetfunctions.update_sets(smashSets, smashggKey, phaseId)
     betsChannel = bot.get_channel(int(betsChannelId))
     for smashSetKey in smashSets:
         smashSet = smashSets[smashSetKey]
@@ -246,9 +246,9 @@ async def linkgg(ctx, ggSlug):
         json.dump(ggIds, json_data_file)
 
 async def pay_results(messageChannel):
-    global eventId
+    global phaseId
     global smashggKey
-    eventJson = smashsetfunctions.get_event_standings(eventId, smashggKey)
+    eventJson = smashsetfunctions.get_event_standings(phaseId, smashggKey)
     resultsJson = eventJson['standings']['nodes']
 
     tourneyName = eventJson['tournament']['name']
@@ -279,17 +279,17 @@ async def pay_results(messageChannel):
 
 @commands.command()
 async def starttourney(ctx, newId):
-    global eventId
+    global phaseId
 
-    if eventId != None:
+    if phaseId != None:
         await ctx.channel.send('There\'s already an active tournament')
         return
     
     if ctx.message.author.guild_permissions.administrator == False:
         return
     
-    eventId = newId
-    eventJson = smashsetfunctions.get_event_standings(eventId, smashggKey)
+    phaseId = newId
+    eventJson = smashsetfunctions.get_event_standings(phaseId, smashggKey)
     tourneyName = eventJson['tournament']['name']
     eventName = eventJson['name']
     
@@ -297,9 +297,9 @@ async def starttourney(ctx, newId):
     
 @commands.command()
 async def stoptourney(ctx):
-    global eventId
+    global phaseId
 
-    if eventId == None:
+    if phaseId == None:
         await ctx.channel.send('There\'s no active tournament')
         return
     
@@ -307,13 +307,13 @@ async def stoptourney(ctx):
         return
 
     await ctx.channel.send('Tournament over')
-    eventId = None
+    phaseId = None
 
 @commands.command()
 async def stoptourneyresults(ctx):
-    global eventId
+    global phaseId
 
-    if eventId -= None:
+    if phaseId == None:
         await ctx.channel.send('There\'s no active tournament')
         return
     
@@ -321,7 +321,7 @@ async def stoptourneyresults(ctx):
         return
 
     await pay_results(ctx.channel)
-    eventId = None
+    phaseId = None
     
 @bot.event
 async def on_ready():

@@ -2,27 +2,29 @@ import requests
 import json
 from jipesoclasses import SmashSet
 
-def get_event_standings(eventId, smashggKey):
+def get_event_standings(phaseId, smashggKey):
     url = 'https://api.smash.gg/gql/alpha'
     query = """
             {
-                event(id: "%s"){
-                    name
-                    numEntrants
-                    tournament {
+                phase(id: "%s"){
+                    event {
                         name
-                    }
-                    standings(query: {
-                        perPage: 16
-                        page: 1
-                    }){
-                        nodes {
-                            placement
-                            entrant{
-                                participants {
-                                    player {
-                                        id
-                                        gamerTag
+                        numEntrants
+                        tournament {
+                            name
+                        }
+                        standings(query: {
+                            perPage: 16
+                            page: 1
+                        }){
+                            nodes {
+                                placement
+                                entrant{
+                                    participants {
+                                        player {
+                                            id
+                                            gamerTag
+                                        }
                                     }
                                 }
                             }
@@ -30,11 +32,11 @@ def get_event_standings(eventId, smashggKey):
                     }
                 }
             }
-            """ % eventId
+            """ % phaseId
     json = {'query' : query }
     headers = {'Authorization' : 'Bearer %s' % smashggKey}
     output = requests.post(url, json = json, headers = headers)
-    return output.json()['data']['event']
+    return output.json()['data']['phase']['event']
     
 def get_gg_id(ggSlug, smashggKey):
     url = 'https://api.smash.gg/gql/alpha'
@@ -55,23 +57,25 @@ def get_gg_id(ggSlug, smashggKey):
     else:
         return None
 
-def update_sets(smashSets, smashggKey, eventId):
+def update_sets(smashSets, smashggKey, phaseId):
     url = 'https://api.smash.gg/gql/alpha'
     query = """
             {
-                event(id: "%s"){
-                    sets {
-                        nodes {
-                            id
-                            startedAt
-                            winnerId
-                            slots {
-                                entrant {
-                                    id
-                                    participants {
-                                        player {
-                                            id
-                                            gamerTag
+                phase(id: "%s"){
+                    event {
+                        sets {
+                            nodes {
+                                id
+                                startedAt
+                                winnerId
+                                slots {
+                                    entrant {
+                                        id
+                                        participants {
+                                            player {
+                                                id
+                                                gamerTag
+                                            }
                                         }
                                     }
                                 }
@@ -80,11 +84,11 @@ def update_sets(smashSets, smashggKey, eventId):
                     }
                 }
             }
-            """ % eventId
+            """ % phaseId
     json = {'query' : query }
     headers = {'Authorization' : 'Bearer %s' % smashggKey}
     output = requests.post(url, json = json, headers = headers)
-    jsonSets = output.json()['data']['event']['sets']['nodes']
+    jsonSets = output.json()['data']['phase']['event']['sets']['nodes']
     
     if jsonSets == None:
         return
