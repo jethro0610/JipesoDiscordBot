@@ -11,6 +11,9 @@ from jipesoclasses import Bet
 config = None
 jipesoUsers = None
 ggIds = None
+payouts = None
+eventId = None
+smashSets = dict()
 
 with open('config.json') as json_data_file:
     config = json.load(json_data_file)
@@ -21,17 +24,16 @@ with open('jipeso.json') as json_data_file:
 with open('ggIds.json') as json_data_file:
     ggIds = json.load(json_data_file)
 
+with open('payouts.json') as json_data_file:
+    payouts = json.load(json_data_file)
+
 smashggKey = config['smashggKey']
-eventId = None
 discordKey = config['discordKey']
 betsChannelId = config['betsChannelId']
 winnersPay = config['winnersPay']
 losersPay = config['losersPay']
 
 bot = commands.Bot(command_prefix='!')
-
-smashSets = dict()
-bets = None
 
 def get_mention(jipesoId):
     return '<@!%s>' % jipesoId
@@ -243,25 +245,83 @@ async def linkgg(ctx, ggSlug):
     with open('ggIds.json', 'w') as json_data_file:
         json.dump(ggIds, json_data_file)
 
+async def pay_results(messageChannel):
+    global eventId
+    global smashggKey
+    eventJson = smashsetfunctions.get_event_standings(eventId, smashggKey)
+    resultsJson = eventJson['standings']['nodes']
+
+    tourneyName = eventJson['tournament']['name']
+    eventName = eventJson['name']
+    totalEntrants = eventJson['numEntrants']
+    totalPot = totalEntrants * 150
+    
+    outputString = tourneyName + ' | ' + eventName + ' | Total Entrants: ' + str(totalEntrants) + ' | Total Pot: ' + str(totalPot) + ' Jipesos' + '\n'
+    for result in resultsJson:
+        placement = str(result['placement'])
+        player = { 'name' : result['entrant']['participants'][0]['player']['gamerTag'], 'ggId' : str(result['entrant']['participants'][0]['player']['id'])}
+        outputString += placement + '. ' + get_player_string(player)
+        
+        payoutPercent = 0
+        if placement in payouts:
+            payoutPercent = float(payouts[placement])
+        totalPayout = totalPot * (payoutPercent/100)
+        
+        playerJipesoId = ggId_to_jipesoId(player['ggId'])
+        if playerJipesoId != None and totalPayout != 0:
+            add_balance(playerJipesoId, totalPayout)
+            outputString += ' (%s Jipesos | Balance: %d Jipesos)' % (totalPayout, get_balance(playerJipesoId))
+
+        outputString += '\n'
+
+    save_jipesos()
+    await messageChannel.send(outputString)
+
 @commands.command()
 async def starttourney(ctx, newId):
     global eventId
+
+    if eventId != None:
+        await ctx.channel.send('There\'s already an active tournament')
+        return
     
     if ctx.message.author.guild_permissions.administrator == False:
         return
     
     eventId = newId
-    await ctx.channel.send('Started tournament!')
-
+    eventJson = smashsetfunctions.get_event_standings(eventId, smashggKey)
+    tourneyName = eventJson['tournament']['name']
+    eventName = eventJson['name']
+    
+    await ctx.channel.send('Started Tournament: ' + tourneyName + ' | ' + eventName)
+    
 @commands.command()
 async def stoptourney(ctx):
     global eventId
+
+    if eventId == None:
+        await ctx.channel.send('There\'s no active tournament')
+        return
     
     if ctx.message.author.guild_permissions.administrator == False:
         return
-    
-    eventId = None
+
     await ctx.channel.send('Tournament over')
+    eventId = None
+
+@commands.command()
+async def stoptourneyresults(ctx):
+    global eventId
+
+    if eventId -= None:
+        await ctx.channel.send('There\'s no active tournament')
+        return
+    
+    if ctx.message.author.guild_permissions.administrator == False:
+        return
+
+    await pay_results(ctx.channel)
+    eventId = None
     
 @bot.event
 async def on_ready():
@@ -274,5 +334,6 @@ bot.add_command(bet)
 bot.add_command(balance)
 bot.add_command(starttourney)
 bot.add_command(stoptourney)
+bot.add_command(stoptourneyresults)
 bot.add_command(linkgg)
 bot.run(discordKey)

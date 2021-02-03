@@ -2,6 +2,40 @@ import requests
 import json
 from jipesoclasses import SmashSet
 
+def get_event_standings(eventId, smashggKey):
+    url = 'https://api.smash.gg/gql/alpha'
+    query = """
+            {
+                event(id: "%s"){
+                    name
+                    numEntrants
+                    tournament {
+                        name
+                    }
+                    standings(query: {
+                        perPage: 16
+                        page: 1
+                    }){
+                        nodes {
+                            placement
+                            entrant{
+                                participants {
+                                    player {
+                                        id
+                                        gamerTag
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            """ % eventId
+    json = {'query' : query }
+    headers = {'Authorization' : 'Bearer %s' % smashggKey}
+    output = requests.post(url, json = json, headers = headers)
+    return output.json()['data']['event']
+    
 def get_gg_id(ggSlug, smashggKey):
     url = 'https://api.smash.gg/gql/alpha'
     query = """
