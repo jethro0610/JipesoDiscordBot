@@ -73,22 +73,18 @@ def update_sets(smashSets, smashggKey, phaseGroupId):
     query = """
             {
                 phaseGroup(id: "%s"){
-                    phase {
-                        event {
-                            sets {
-                                nodes {
+                    sets {
+                        nodes {
+                            id
+                            startedAt
+                            winnerId
+                            slots {
+                                entrant {
                                     id
-                                    startedAt
-                                    winnerId
-                                    slots {
-                                        entrant {
+                                    participants {
+                                        player {
                                             id
-                                            participants {
-                                                player {
-                                                    id
-                                                    gamerTag
-                                                }
-                                            }
+                                            gamerTag
                                         }
                                     }
                                 }
@@ -101,7 +97,7 @@ def update_sets(smashSets, smashggKey, phaseGroupId):
     json = {'query' : query }
     headers = {'Authorization' : 'Bearer %s' % smashggKey}
     output = requests.post(url, json = json, headers = headers)
-    jsonSets = output.json()['data']['phaseGroup']['phase']['event']['sets']['nodes']
+    jsonSets = output.json()['data']['phaseGroup']['sets']['nodes']
     
     if jsonSets == None:
         return

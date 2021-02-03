@@ -33,6 +33,7 @@ discordKey = config['discordKey']
 betsChannelId = config['betsChannelId']
 winnersPay = config['winnersPay']
 losersPay = config['losersPay']
+jipesoText = 'Jipeso'
 
 bot = commands.Bot(command_prefix='!')
 
@@ -123,17 +124,17 @@ async def calculate_bets(betsChannel, finishedSet):
     losingPlayer = finishedSet.players[playerKeyList[loserInt]]
     winningPlayer = finishedSet.players[playerKeyList[winnerInt]]
     
-    await betsChannel.send('%s won the set. %d Jipesos were side bet' % (get_player_string(winningPlayer), totalBetAmount))
+    await betsChannel.send('%s won the set. %s%d were side bet' % (get_player_string(winningPlayer), jipesoText, totalBetAmount))
 
     winnerJipesoId = ggId_to_jipesoId(winningPlayer['ggId'])
     if winnerJipesoId != None:
         add_balance(winnerJipesoId, winnersPay)
-        await betsChannel.send('%s earned %d Jipeso\'s for winning' % (get_mention(winnerJipesoId), winnersPay))
+        await betsChannel.send('%s earned %s%d for winning' % (get_mention(winnerJipesoId), jipesoText, winnersPay))
 
     loserJipesoId = ggId_to_jipesoId(losingPlayer['ggId'])
     if loserJipesoId != None:
         add_balance(loserJipesoId, losersPay)
-        await betsChannel.send('%s earned %d Jipeso\'s for trying' % (get_mention(loserJipesoId), losersPay))
+        await betsChannel.send('%s earned %s%d for trying' % (get_mention(loserJipesoId), jipesoText, losersPay))
         
     if winnerBetAmount == 0.0 or totalBetAmount == 0.0:
         return
@@ -145,7 +146,7 @@ async def calculate_bets(betsChannel, finishedSet):
         
         beterBalance = get_balance(betKey) + earnings
         set_balance(betKey, beterBalance)
-        await betsChannel.send('<@!%s> earned %d Jipesos(%d%% of pot) in bettings. Their balance is now %d' % (betKey, earnings, percentOfPot * 100, beterBalance))
+        await betsChannel.send('<@!%s> earned %s%d (%d%% of pot) in bettings. Their balance is now %s%d' % (betKey, jipesoText, earnings, percentOfPot * 100, jipesoText, beterBalance))
 
     save_jipesos()
     
@@ -188,19 +189,25 @@ async def bet(ctx, predictionName, amount):
     
     if not ctx.author.id in setToBet.bets:
         if beterBalance < amount:
-            await ctx.channel.send('<@!%s> Your bet is more than your account balance (%d Jipesos)' % (ctx.author.id, beterBalance))
+            await ctx.channel.send('<@!%s> Your bet is more than your account balance (%s%d)' % (ctx.author.id, jipesoText, beterBalance))
             return
     
         setToBet.bets[ctx.author.id] = Bet(int(predictionId), amount)
         set_balance(ctx.author.id, beterBalance - amount)
-        await ctx.channel.send('<@!%s> has placed a %d Jipeso bet on %s\'s set vs. %s. Their balance is now %d Jipesos' % (ctx.author.id, amount, get_player_string(prediction), get_player_string(opponent), get_balance(ctx.author.id)))
+        await ctx.channel.send('<@!%s> has placed a %s%d bet on %s\'s set vs. %s. Their balance is now %s%d' % (ctx.author.id,
+                                                                                                                        jipesoText,
+                                                                                                                        amount,
+                                                                                                                        get_player_string(prediction),
+                                                                                                                        get_player_string(opponent),
+                                                                                                                        jipesoText,
+                                                                                                                        get_balance(ctx.author.id)))
     else:
         await ctx.channel.send('<@!%s> You already placed a bet on this set' % (ctx.author.id))
 
 @commands.command()
 async def balance(ctx):
     ensure_jipesoUser_exists(ctx.author.id)
-    await ctx.channel.send('<@!%s> Your balance is %d Jipesos' % (ctx.author.id, get_balance(ctx.author.id)))
+    await ctx.channel.send('<@!%s> Your balance is %s%d' % (ctx.author.id, jipesoText, get_balance(ctx.author.id)))
 
 @tasks.loop(seconds=5.0)
 async def update_sets():
@@ -236,7 +243,7 @@ async def linkgg(ctx, ggSlug):
     ggId = str(smashsetfunctions.get_gg_id(ggSlug, smashggKey))
     if ggId != None:
         if ggId in ggIds:
-            await ctx.channel.send('<@!%s> Has already been linked to another discord' % ctx.author.id)
+            await ctx.channel.send('<@!%s> Has already been linked to another Discord user' % ctx.author.id)
         else:
             ggIds[ggId] = str(ctx.author.id)
             await ctx.channel.send('<@!%s> SmashGG linked succesfully!' % ctx.author.id)
@@ -257,7 +264,7 @@ async def pay_results(messageChannel):
     totalEntrants = eventJson['numEntrants']
     totalPot = totalEntrants * 150
     
-    outputString = tourneyName + ' | ' + eventName + ' | Total Entrants: ' + str(totalEntrants) + ' | Total Pot: ' + str(totalPot) + ' Jipesos' + '\n'
+    outputString = tourneyName + ' | ' + eventName + ' | Total Entrants: ' + str(totalEntrants) + ' | Total Pot: ' + str(jipesoText) + str(totalPot) + '\n'
     for result in resultsJson:
         placement = str(result['placement'])
         player = { 'name' : result['entrant']['participants'][0]['player']['gamerTag'], 'ggId' : str(result['entrant']['participants'][0]['player']['id'])}
@@ -271,7 +278,7 @@ async def pay_results(messageChannel):
         playerJipesoId = ggId_to_jipesoId(player['ggId'])
         if playerJipesoId != None and totalPayout != 0:
             add_balance(playerJipesoId, totalPayout)
-            outputString += ' (%s Jipesos | Balance: %d Jipesos)' % (totalPayout, get_balance(playerJipesoId))
+            outputString += ' (%s%s | Balance: %s%d)' % (totalPayout, jipesoText, jipesoText, get_balance(playerJipesoId))
 
         outputString += '\n'
 
@@ -333,7 +340,7 @@ async def stoptourneyresults(ctx):
 async def bracket(ctx):
     global bracketLink
     if bracketLink == '':
-        await ctx.channel.send('<@!%s> No tournament running right now' % ctx.author.id)
+        await ctx.channel.send('<@!%s> There\'s no active tournament' % ctx.author.id)
         return
 
     await ctx.channel.send('<@!%s> %s' % (ctx.author.id, bracketLink))
@@ -341,9 +348,11 @@ async def bracket(ctx):
     
 @bot.event
 async def on_ready():
+    global jipesoText
     print(f'{bot.user} has connected to Discord!')
     update_sets.start()
     save_jipesos_loop.start()
+    jipesoText = discord.utils.get(bot.emojis, name='jipeso')
 
 atexit.register(save_jipesos)
 bot.add_command(bet)
