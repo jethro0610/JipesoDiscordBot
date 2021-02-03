@@ -74,6 +74,7 @@ def ensure_jipesoUser_exists(jipesoUserId):
     global jipesoUsers
     if not str(jipesoUserId) in jipesoUsers:
         jipesoUsers[str(jipesoUserId)] = {'balance' : 100}
+        save_jipesos()
 
 def get_balance(jipesoUserId):
     global jipesoUsers
@@ -99,7 +100,7 @@ def save_jipesos():
     global jipesoUsers
     with open('jipeso.json', 'w') as json_data_file:
         json.dump(jipesoUsers, json_data_file)
-    print("Saved.")
+    print("Saved Jipesos file")
     
 async def calculate_bets(betsChannel, finishedSet):
     totalBetAmount = 0.0
@@ -204,7 +205,8 @@ async def bet(ctx, predictionName, amount):
                                                                                                                         get_balance(ctx.author.id)))
     else:
         await ctx.channel.send('<@!%s> You already placed a bet on this set' % (ctx.author.id))
-
+    save_jipesos()
+    
 @commands.command()
 async def balance(ctx):
     ensure_jipesoUser_exists(ctx.author.id)
@@ -373,7 +375,8 @@ async def pay(ctx, otherId, amount):
     add_balance(otherId, amount)
 
     await ctx.channel.send('<@!%s> paid <@!%s> %s%d' % (payerId, otherId, jipesoText, amount))
-
+    save_jipesos()
+    
 @bot.event
 async def on_ready():
     global jipesoText
