@@ -15,7 +15,12 @@ def update_sets(smashSets, smashggKey, eventId):
                             slots {
                                 entrant {
                                     id
-                                    name
+                                    participants {
+                                        player {
+                                            id
+                                            gamerTag
+                                        }
+                                    }
                                 }
                             }
                         }
@@ -40,7 +45,8 @@ def update_sets(smashSets, smashggKey, eventId):
                 newSmashSet = SmashSet()
                 newSmashSet.startTime = jsonSet['startedAt']
                 for slot in jsonSet['slots']:
-                    newSmashSet.players[slot['entrant']['id']] = slot['entrant']['name']
+                    newSmashSet.players[slot['entrant']['id']] = {'name' : slot['entrant']['participants'][0]['player']['gamerTag'],
+                                                                  'ggId' : slot['entrant']['participants'][0]['player']['id'] }
 
             if jsonSet['winnerId'] != None:
                 if not jsonSet['id'] in smashSets:
