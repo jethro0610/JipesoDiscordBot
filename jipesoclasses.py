@@ -169,14 +169,14 @@ class SmashSet:
         if winning_user != None:
             winning_user.balance += winners_pay
             print('User %s earned %d Jipesos for winning' % (winning_user.discord_id, winners_pay))
-            text_output.append('%s earned [%s%d] for winning' % (winning_player.get_player_string(), jipeso_text, winners_pay))
+            text_output.append('%s earned [+%s%d] for winning' % (winning_player.get_player_string(), jipeso_text, winners_pay))
 
         # Give Jipesos to the losing Jipeso User
         losing_user = losing_player.get_jipeso_user()
         if losing_user != None:
             losing_user.balance += losers_pay
             print('User %s earned %d Jipesos for losing' % (losing_user.discord_id, losers_pay))
-            text_output.append('%s earned [%s%d] for trying' % (losing_player.get_player_string(), jipeso_text, losers_pay))
+            text_output.append('%s earned [+%s%d] for trying' % (losing_player.get_player_string(), jipeso_text, losers_pay))
 
         # Skip if there's no bets
         if winner_bet_amount == 0.0 or total_bet_amount == 0.0:
@@ -189,7 +189,7 @@ class SmashSet:
             
             bet.beter.balance += earnings
             print('User %s earned %d Jipesos in bettings' % (bet.beter.discord_id, earnings))
-            text_output.append('<@!%s> earned [%s%d] (%d%% of pot) in bettings. Their balance is now [%s%d]' % (bet.beter.discord_id, jipeso_text, earnings, percent_of_pot * 100, jipeso_text, bet.beter.balance))
+            text_output.append('<@!%s> earned [+%s%d] (%d%% of pot) in bettings. Their balance is now [%s%d]' % (bet.beter.discord_id, jipeso_text, earnings, percent_of_pot * 100, jipeso_text, bet.beter.balance))
 
         save_jipeso_user_json()
         self.ended = True
@@ -204,7 +204,7 @@ class Bet:
 class JipesoUser:
     def __init__(self, discord_id, balance):
         self.discord_id = str(discord_id)
-        self.balance = balance
+        self.balance = float(balance)
 
     def get_mention(self):
         return '<@!%s>' % self.discord_id

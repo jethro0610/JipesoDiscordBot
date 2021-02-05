@@ -107,6 +107,7 @@ def update_sets(smash_sets, smashgg_key, phase_group_id):
     for json_set in json_sets:
         if json_set['startedAt'] != None: # Add only if the set starrted
             new_smash_set = None
+            
             if(json_set['id'] in smash_sets): # Use set the already exists
                 new_smash_set = smash_sets[json_set['id']]
             else: # Create a new set if it doesn't exist

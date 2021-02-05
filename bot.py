@@ -4,17 +4,20 @@ import discord
 from discord.ext import commands, tasks
 
 import smashsetfunctions
-from jipesoclasses import SmashSet
 from jipesoclasses import Bet
+from jipesoclasses import Player
+
 from jipesoclasses import load_gg_id_json
 from jipesoclasses import save_gg_id_json
 from jipesoclasses import load_jipeso_user_json
 from jipesoclasses import save_jipeso_user_json
+
 from jipesoclasses import add_gg_id_to_jipeso_user
 from jipesoclasses import get_jipeso_user_from_gg_id
 from jipesoclasses import get_jipeso_user_from_discord_id
 from jipesoclasses import mention_to_gg_id
 from jipesoclasses import gg_id_to_discord_id
+
 from jipesoclasses import set_winners_pay
 from jipesoclasses import set_losers_pay
 
@@ -106,7 +109,7 @@ async def bet(ctx, prediction_input, amount):
         set_to_bet.bets.append(Bet(beter, prediction, amount)) # Add the bet to the set
         beter.balance -= amount
         print('User %s placed a %d Jipeso bet on %s\s set vs. %s' %(ctx.author.id, amount, prediction.name, opponent.name))
-        await ctx.channel.send('<@!%s> placed a [%s%d] bet on %s\'s set vs. %s. Their balance is now [%s%d]' %  (ctx.author.id,
+        await ctx.channel.send('<@!%s> placed a [-%s%d] bet on %s\'s set vs. %s. Their balance is now [%s%d]' %  (ctx.author.id,
                                                                                                             jipeso_text,
                                                                                                             amount,
                                                                                                             prediction.get_player_string(),
@@ -218,13 +221,13 @@ async def pay_results(message_channel):
     total_entrants = event_json['numEntrants']
     total_pot = total_entrants * 150
     
-    output_string = tourney_name + ' | ' + event_name + ' | Total Entrants: ' + str(total_entrants) + ' | Total Pot: ' + str(jipeso_text) + str(total_pot) + '\n'
+    output_string = tourney_name + ' | ' + event_name + ' | Total Entrants: ' + str(total_entrants) + ' | Total Pot: [' + str(jipeso_text) + str(total_pot) + ']\n'
     for result in results_json:
         # Get the placement
         placement = str(result['placement'])
 
         # Create a Player object
-        result_player = Player(result['entrant']['participants'][0]['player']['gamerTag'], str(result['entrant']['participants'][0]['player']['id']))
+        result_player = Player(result['entrant']['participants'][0]['player']['gamerTag'], str(result['entrant']['participants'][0]['player']['id']), '')
         output_string += placement + '. ' + result_player.get_player_string()
 
         # Calculate the payout for this placement
@@ -234,11 +237,11 @@ async def pay_results(message_channel):
         total_payout = total_pot * (payout_percent/100)
 
         # Output the payout if the competitor has a linked Discord
-        result_jipeso_user = get_jipeso_user_from_gg_id(player.gg_id)
+        result_jipeso_user = get_jipeso_user_from_gg_id(result_player.gg_id)
         if result_jipeso_user != None and total_payout != 0:
             result_jipeso_user.balance += total_payout
-            output_string += ' ([%s%s] | Balance: [%s%d])' % (total_payout, jipeso_text, jipeso_text, result_jipeso_user.balance)
-            print('Payed out User %d Jipesos to %s for ranking %d in the tournament' % (total_payout, result_jipeso_user.discord_id, placement))
+            output_string += ' [+%s%s]' % (jipeso_text, total_payout)
+            print('Payed out User %d Jipesos to %s for ranking %s in the tournament' % (total_payout, result_jipeso_user.discord_id, placement))
 
         output_string += '\n'
 
@@ -284,7 +287,7 @@ async def pay(ctx, reciever_id, amount):
     reciever.balance += amount
 
     print('User %s paid User %s %d Jipesos' % (payer_id, reciever_id, amount))
-    await ctx.channel.send('<@!%s> paid <@!%s> [%s%d]' % (payer_id, reciever_id, jipeso_text, amount))
+    await ctx.channel.send('<@!%s> paid <@!%s> [-%s%d]' % (payer_id, reciever_id, jipeso_text, amount))
     save_jipeso_user_json()
 
 @tasks.loop(seconds=5.0)
