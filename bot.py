@@ -124,13 +124,13 @@ async def bet(ctx, prediction_input, amount):
     
     if not ctx.author.id in set_to_bet.bets:
         if beter.balance < amount:
-            await ctx.channel.send('<@!%s> Your bet is more than your account balance (%s%d)' % (ctx.author.id, jipeso_text, beter.balance))
+            await ctx.channel.send('<@!%s> Your bet is more than your account balance [%s%d]' % (ctx.author.id, jipeso_text, beter.balance))
             return
     
         set_to_bet.bets.append(Bet(beter, prediction, amount))
         beter.balance -= amount
-        print('User %s placed a %d Jipeso bet on %s set vs. %s.' %(ctx.author.id, amount, prediction.name, opponent.name))
-        await ctx.channel.send('<@!%s> placed a %s%d bet on %s\'s set vs. %s. Their balance is now %s%d' %  (ctx.author.id,
+        print('User %s placed a %d Jipeso bet on %s\s set vs. %s' %(ctx.author.id, amount, prediction.name, opponent.name))
+        await ctx.channel.send('<@!%s> placed a [%s%d] bet on %s\'s set vs. %s. Their balance is now [%s%d]' %  (ctx.author.id,
                                                                                                             jipeso_text,
                                                                                                             amount,
                                                                                                             prediction.get_player_string(),
@@ -143,7 +143,7 @@ async def bet(ctx, prediction_input, amount):
     
 @commands.command()
 async def balance(ctx):
-    await ctx.channel.send('<@!%s> Your balance is %s%d' % (ctx.author.id, jipeso_text, get_jipeso_user_from_discord_id(ctx.author.id).balance))
+    await ctx.channel.send('<@!%s> Your balance is [%s%d]' % (ctx.author.id, jipeso_text, get_jipeso_user_from_discord_id(ctx.author.id).balance))
 
 @commands.command()
 async def linkgg(ctx, gg_id_slug):
@@ -246,7 +246,7 @@ async def pay_results(message_channel):
         result_jipeso_user = get_jipeso_user_from_gg_id(player.gg_id)
         if result_jipeso_user != None and total_payout != 0:
             result_jipeso_user.balance += total_payout
-            output_string += ' (%s%s | Balance: %s%d)' % (total_payout, jipeso_text, jipeso_text, result_jipeso_user.balance)
+            output_string += ' ([%s%s] | Balance: [%s%d])' % (total_payout, jipeso_text, jipeso_text, result_jipeso_user.balance)
             print('Payed out User %d Jipesos to %s for ranking %d in the tournament' % (total_payout, result_jipeso_user.discord_id, placement))
 
         output_string += '\n'
@@ -273,18 +273,24 @@ async def pay(ctx, reciever_id, amount):
     reciever_id = reciever_id.replace('>', '')
     amount = amount.replace('-','')
     amount = float(amount)
-
+    
     try:
         await bot.fetch_user(reciever_id)
     except:
         await ctx.channel.send('<@!%s> Member not found' % (payer_id))
         return
+
+    payer = get_jipeso_user_from_discord_id(payer_id)
+    reciever = get_jipeso_user_from_discord_id(reciever_id)
+
+    if payer.balance < amount:
+        await ctx.channel.send('<@!%s> Your payment is more than your account balance [%s%d]' % (ctx.author.id, jipeso_text, payer.balance))
     
-    get_jipeso_user_from_discord_id(payer_id).balance -= amount
-    get_jipeso_user_from_discord_id(payer_id).balance += amount
+    payer.balance -= amount
+    reciever.balance += amount
 
     print('User %s paid User %s %d Jipesos' % (payer_id, reciever_id, amount))
-    await ctx.channel.send('<@!%s> paid <@!%s> %s%d' % (payer_id, reciever_id, jipeso_text, amount))
+    await ctx.channel.send('<@!%s> paid <@!%s> [%s%d]' % (payer_id, reciever_id, jipeso_text, amount))
     save_jipeso_user_json()
 
 @bot.event
