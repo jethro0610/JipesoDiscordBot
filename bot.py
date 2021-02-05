@@ -1,4 +1,5 @@
 import atexit
+import datetime
 import asyncio
 import os
 import json
@@ -33,6 +34,7 @@ discordKey = config['discordKey']
 betsChannelId = config['betsChannelId']
 winnersPay = config['winnersPay']
 losersPay = config['losersPay']
+maxBetTime = config['maxBetTime']
 jipesoText = 'Jipeso'
 
 bot = commands.Bot(command_prefix='!')
@@ -183,7 +185,11 @@ async def bet(ctx, predictionName, amount):
     if setToBet == None:
         await ctx.channel.send('<@!%s> Couldn\'t find match/player to bet on' % (ctx.author.id))
         return
-
+    
+    if int(datetime.datetime.now().timestamp()) - setToBet.startTime > maxBetTime:
+        await ctx.channel.send('<@!%s> Too late to bet on this set' % (ctx.author.id))
+        return
+    
     opponentInt = 1 - predictionInt
     playerKeyList = list(setToBet.players)
     opponent = setToBet.players[playerKeyList[opponentInt]]
@@ -227,6 +233,7 @@ async def update_sets():
         smashSet = smashSets[smashSetKey]
         playerKeyList = list(smashSet.players)
         if smashSet.started == False:
+            smashSet.startTime = int(datetime.datetime.now().timestamp())
             startString = '%s vs. %s has started' % (get_player_string(smashSet.players[playerKeyList[0]]), get_player_string(smashSet.players[playerKeyList[1]]))
             print(startString)
             await betsChannel.send(startString)
@@ -376,7 +383,7 @@ async def pay(ctx, otherId, amount):
 
     await ctx.channel.send('<@!%s> paid <@!%s> %s%d' % (payerId, otherId, jipesoText, amount))
     save_jipesos()
-    
+
 @bot.event
 async def on_ready():
     global jipesoText

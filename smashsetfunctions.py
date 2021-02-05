@@ -102,6 +102,8 @@ def update_sets(smashSets, smashggKey, phaseGroupId):
     if jsonSets == None:
         return
 
+    print("Poll")
+    
     for jsonSet in jsonSets:
         if jsonSet['startedAt'] != None:
             newSmashSet = None
@@ -109,7 +111,6 @@ def update_sets(smashSets, smashggKey, phaseGroupId):
                 newSmashSet = smashSets[jsonSet['id']]
             else:
                 newSmashSet = SmashSet()
-                newSmashSet.startTime = jsonSet['startedAt']
                 for slot in jsonSet['slots']:
                     newSmashSet.players[slot['entrant']['id']] = {'name' : slot['entrant']['participants'][0]['player']['gamerTag'],
                                                                   'ggId' : str(slot['entrant']['participants'][0]['player']['id'])}
