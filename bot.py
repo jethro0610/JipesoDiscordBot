@@ -1,24 +1,20 @@
 import datetime
 import json
-import smashsetfunctions
 import discord
 from discord.ext import commands, tasks
 
+import smashsetfunctions
 from jipesoclasses import SmashSet
 from jipesoclasses import Bet
-
 from jipesoclasses import load_gg_id_json
 from jipesoclasses import save_gg_id_json
 from jipesoclasses import load_jipeso_user_json
 from jipesoclasses import save_jipeso_user_json
-
 from jipesoclasses import add_gg_id_to_jipeso_user
 from jipesoclasses import get_jipeso_user_from_gg_id
 from jipesoclasses import get_jipeso_user_from_discord_id
-
 from jipesoclasses import mention_to_gg_id
 from jipesoclasses import gg_id_to_discord_id
-
 from jipesoclasses import set_winners_pay
 from jipesoclasses import set_losers_pay
 
@@ -28,106 +24,86 @@ phase_group_id = None
 bracket_link = ''
 smash_sets = dict()
 
+# Load the configs
 with open('config.json') as json_data_file:
     config = json.load(json_data_file)
 with open('payouts.json') as json_data_file:
     payouts = json.load(json_data_file)
 
+# Assign the config values
 smashgg_key = config['smashgg_key']
 discord_key = config['discord_key']
 bets_channel_id = config['bets_channel_id']
-
 set_winners_pay(float(config['winners_pay']))
 set_losers_pay(float(config['losers_pay']))
-
 max_bet_time = config['max_bet_time']
 jipeso_text = 'Jipeso'
 
+# Load user data
 load_jipeso_user_json()
 load_gg_id_json()
 
+# Create the bot
 bot = commands.Bot(command_prefix='!')
 
 @tasks.loop(seconds=120.0)
 async def save_jipeso_user_json_loop():
     save_jipeso_user_json()
 
-@tasks.loop(seconds=5.0)
-async def update_sets():
-    global phase_group_id
-    global smash_sets
-    global smashgg_key
-    
-    if phase_group_id == None:
-        return
-    
-    smashsetfunctions.update_sets(smash_sets, smashgg_key, phase_group_id)
-    bets_channel = bot.get_channel(int(bets_channel_id))
-    for smash_set_key in smash_sets:
-        smash_set = smash_sets[smash_set_key]
-        if smash_set.started == False:
-            smash_set.startTime = int(datetime.datetime.now().timestamp())
-            start_string = '%s vs. %s started' % (smash_set.players[0].get_player_string(), smash_set.players[1].get_player_string())
-            print(start_string)
-            await bets_channel.send(start_string)
-            smash_set.started = True
-           
-        if smash_set.ending == True and smash_set.ended == False:
-            end_string = '%s vs. %s ended' % (smash_set.players[0].get_player_string(), smash_set.players[1].get_player_string())
-            print(end_string)
-            await bets_channel.send(end_string)
-            
-            bet_text_outputs = smash_set.end(jipeso_text)
-            for text_output in bet_text_outputs:
-                await bets_channel.send(text_output)
-
 @commands.command()
 async def bet(ctx, prediction_input, amount):
     global smash_sets
 
-    beter = get_jipeso_user_from_discord_id(ctx.author.id)
+    # Make sure the amount is positive and make it an int
     amount = amount.replace('-','')
     amount = float(amount)
-    
+
+    # Assign initial values
+    beter = get_jipeso_user_from_discord_id(ctx.author.id)
     set_to_bet = None
     prediction_int = 0
     opponent_int = 0
 
+    # Assign the predictions SmashGG ID if possible
     prediction_gg_id = ''
     if '<' in prediction_input and '>' in prediction_input and '@' in prediction_input:
         prediction_gg_id = mention_to_gg_id(prediction_input)
-    
+
+    # Find the set to bet on
     for set_key in smash_sets:
         smash_set = smash_sets[set_key]
         if smash_set.ended == True:
             continue
-        
+
+        # Find the predicted winner
         counter = 0
         for player in smash_set.players:
             if player.name == prediction_input or player.gg_id == prediction_gg_id:
                 set_to_bet = smash_set
-                predictionId = player.set_id
                 prediction_int = counter
             counter += 1
         
     if set_to_bet == None:
         await ctx.channel.send('<@!%s> Couldn\'t find match/player to bet on' % (ctx.author.id))
         return
-    
+
+    # Skip if it's too late to bet
     if int(datetime.datetime.now().timestamp()) - set_to_bet.startTime > max_bet_time:
         await ctx.channel.send('<@!%s> Too late to bet on this set' % (ctx.author.id))
         return
-    
+
+    # Get the predicted winner and their opponent
     opponent_int = 1 - prediction_int
     opponent = set_to_bet.players[opponent_int]
     prediction = set_to_bet.players[prediction_int]
-    
-    if not ctx.author.id in set_to_bet.bets:
+
+    # Ensure the set hasn't already been bet on
+    if not set_to_bet.discord_id_has_bet(ctx.author.id):
         if beter.balance < amount:
             await ctx.channel.send('<@!%s> Your bet is more than your account balance [%s%d]' % (ctx.author.id, jipeso_text, beter.balance))
             return
     
-        set_to_bet.bets.append(Bet(beter, prediction, amount))
+        set_to_bet.bets.append(Bet(beter, prediction, amount)) # Add the bet to the set
         beter.balance -= amount
         print('User %s placed a %d Jipeso bet on %s\s set vs. %s' %(ctx.author.id, amount, prediction.name, opponent.name))
         await ctx.channel.send('<@!%s> placed a [%s%d] bet on %s\'s set vs. %s. Their balance is now [%s%d]' %  (ctx.author.id,
@@ -147,11 +123,15 @@ async def balance(ctx):
 
 @commands.command()
 async def linkgg(ctx, gg_id_slug):
+    # Get the SmashGG ID from the slug
     gg_id = str(smashsetfunctions.get_gg_id(gg_id_slug, smashgg_key))
+
+    # SmashGG not found
     if gg_id == None:
         await ctx.channel.send('<@!%s> Couldn\'t find account to link to' % ctx.author.id)
         return
 
+    # Link the account if possible
     add_gg_result = add_gg_id_to_jipeso_user(gg_id, ctx.author.id)
     if add_gg_result == 1:
         print('User %s linked to SmashGG ID %s' %(ctx.author.id, gg_id))
@@ -178,6 +158,7 @@ async def starttourney(ctx, tourney_id):
         await ctx.channel.send('Tournament not found')
         return
 
+    # Get the tournament information
     phase_group_id = tourney_id
     tourney_name = phase_group_json['phase']['event']['tournament']['name']
     event_name = phase_group_json['phase']['event']['name']
@@ -199,6 +180,8 @@ async def stoptourney(ctx):
 
     print('Tournament ended')
     await ctx.channel.send('Tournament over')
+
+    # Clear the bracket link and phase group
     bracket_link = ''
     phase_group_id = None
 
@@ -215,17 +198,21 @@ async def stoptourneyresults(ctx):
         return
 
     await pay_results(ctx.channel)
+
+    # Clear the bracket link and phase group
     bracket_link = ''
     phase_group_id = None
 
 async def pay_results(message_channel):
     global phase_group_id
     global smashgg_key
-    
+
+    # Get the JSON info
     phase_group_json, bracket_link = smashsetfunctions.get_event_standings(phase_group_id, smashgg_key)
     event_json = phase_group_json['phase']['event']
     results_json = phase_group_json['standings']['nodes']
 
+    # Get the tournament information
     tourney_name = event_json['tournament']['name']
     event_name = event_json['name']
     total_entrants = event_json['numEntrants']
@@ -233,16 +220,20 @@ async def pay_results(message_channel):
     
     output_string = tourney_name + ' | ' + event_name + ' | Total Entrants: ' + str(total_entrants) + ' | Total Pot: ' + str(jipeso_text) + str(total_pot) + '\n'
     for result in results_json:
+        # Get the placement
         placement = str(result['placement'])
-        
+
+        # Create a Player object
         result_player = Player(result['entrant']['participants'][0]['player']['gamerTag'], str(result['entrant']['participants'][0]['player']['id']))
         output_string += placement + '. ' + result_player.get_player_string()
-        
+
+        # Calculate the payout for this placement
         payout_percent = 0
         if placement in payouts:
             payout_percent = float(payouts[placement])
         total_payout = total_pot * (payout_percent/100)
-        
+
+        # Output the payout if the competitor has a linked Discord
         result_jipeso_user = get_jipeso_user_from_gg_id(player.gg_id)
         if result_jipeso_user != None and total_payout != 0:
             result_jipeso_user.balance += total_payout
@@ -265,12 +256,15 @@ async def bracket(ctx):
 
 @commands.command()
 async def pay(ctx, reciever_id, amount):
+    # Get the IDs
     payer_id = str(ctx.author.id)
     reciever_id = str(reciever_id)
     reciever_id = reciever_id.replace('<', '')
     reciever_id = reciever_id.replace('@', '')
     reciever_id = reciever_id.replace('!', '')
     reciever_id = reciever_id.replace('>', '')
+
+    # Ensure the amount is positive
     amount = amount.replace('-','')
     amount = float(amount)
     
@@ -292,6 +286,42 @@ async def pay(ctx, reciever_id, amount):
     print('User %s paid User %s %d Jipesos' % (payer_id, reciever_id, amount))
     await ctx.channel.send('<@!%s> paid <@!%s> [%s%d]' % (payer_id, reciever_id, jipeso_text, amount))
     save_jipeso_user_json()
+
+@tasks.loop(seconds=5.0)
+async def update_sets():
+    global phase_group_id
+    global smash_sets
+    global smashgg_key
+
+    # Skip if there's no tourney
+    if phase_group_id == None:
+        return
+
+    # Poll SmashGG
+    smashsetfunctions.update_sets(smash_sets, smashgg_key, phase_group_id)
+
+    # Get the bets channel
+    bets_channel = bot.get_channel(int(bets_channel_id))
+
+    for smash_set_key in smash_sets:
+        smash_set = smash_sets[smash_set_key]
+        # Start sets that haven't started
+        if smash_set.started == False:
+            smash_set.startTime = int(datetime.datetime.now().timestamp())
+            start_string = '%s vs. %s started' % (smash_set.players[0].get_player_string(), smash_set.players[1].get_player_string())
+            print(start_string)
+            await bets_channel.send(start_string)
+            smash_set.started = True
+
+        # Finish complete sets
+        if smash_set.ending == True and smash_set.ended == False:
+            end_string = '%s vs. %s ended' % (smash_set.players[0].get_player_string(), smash_set.players[1].get_player_string())
+            print(end_string)
+            await bets_channel.send(end_string)
+            
+            bet_text_outputs = smash_set.end(jipeso_text)
+            for text_output in bet_text_outputs:
+                await bets_channel.send(text_output)
 
 @bot.event
 async def on_ready():

@@ -20,15 +20,16 @@ def gg_id_to_discord_id(gg_id):
 
 def mention_to_gg_id(mention):
     global gg_id_to_jipeso_user_dict
-    
+
+    # Remove mention formatting
     mention = mention.replace('<', '')
     mention = mention.replace('@', '')
     mention = mention.replace('!', '')
     mention = mention.replace('>', '')
 
+    # Ensure the Discord ID exists
     key_list = list(gg_id_to_jipeso_user_dict.keys())
     val_list = list(gg_id_to_jipeso_user_dict.values())
-
     if not mention in val_list:
         return
 
@@ -38,9 +39,9 @@ def create_new_jipeso_user(discord_id):
     global jippi_user_dict
     global jippi_users
     
-    new_user = JipesoUser(discord_id, 100)
-    jipeso_user_dict[discord_id] = len(jipeso_users)
-    jipeso_users.append(new_user)
+    new_user = JipesoUser(discord_id, 100) # Create the user object
+    jipeso_user_dict[discord_id] = len(jipeso_users) # Assign the dictionary location
+    jipeso_users.append(new_user) # Add the user object
     save_jipeso_user_json()
 
 def load_gg_id_json():
@@ -69,6 +70,8 @@ def get_jipeso_user_from_discord_id(discord_id):
     global jipeso_users
     
     discord_id = str(discord_id)
+
+    # Create a new Jipeso User if they don't exist
     if not discord_id in jipeso_user_dict:
         create_new_jipeso_user(discord_id)
         
@@ -87,6 +90,7 @@ def add_gg_id_to_jipeso_user(gg_id, discord_id):
     else:
         gg_id_to_jipeso_user_dict[gg_id] = discord_id
 
+        # Create a new Jipeso User if they don't exist
         if not discord_id in jipeso_user_dict:
             create_new_jipeso_user(discord_id)
         
@@ -100,6 +104,7 @@ def load_jipeso_user_json():
     with open('jipeso.json') as json_data_file:
         jipeso_json = json.load(json_data_file)
 
+    # Construct a Jipeso User from the JSON
     for json_entry in jipeso_json:
         new_user = JipesoUser(json_entry, jipeso_json[json_entry])
         jipeso_user_dict[json_entry] = len(jipeso_users)
@@ -126,6 +131,12 @@ class SmashSet:
         self.ending = False
         self.ended = False
 
+    def discord_id_has_bet(self, discord_id):
+        for bet in bets:
+            if bet.beter.discord_id == str(discord_id):
+                return True
+        return False
+    
     def end(self, jipeso_text = 'Jipesos'):
         text_output = []
         total_bet_amount = 0.0
@@ -133,45 +144,52 @@ class SmashSet:
         winner_int = -1
         loser_int = -1
         counter = 0
-        
+
+        # Get the total amount for bets, and winning bets
         for bet in self.bets:
             total_bet_amount += bet.amount
             if bet.prediction.set_id == self.winner_set_id:
                 winner_bet_amount += bet.amount
 
+        # Get the winner
         for player in self.players:
             if player.set_id == self.winner_set_id:
                 winner_int = counter
             counter += 1
 
+        # Get the winning and losing Player objects
         loser_int = 1 - winner_int
         losing_player = self.players[loser_int]
         winning_player = self.players[winner_int]
         
-        text_output.append('%s won the set. %s%d were side bet' % (winning_player.get_player_string(), jipeso_text, total_bet_amount))
+        text_output.append('%s won the set. [%s%d] were side bet' % (winning_player.get_player_string(), jipeso_text, total_bet_amount))
 
+        # Give Jipesos to the winning Jipeso User
         winning_user = winning_player.get_jipeso_user()
         if winning_user != None:
             winning_user.balance += winners_pay
             print('User %s earned %d Jipesos for winning' % (winning_user.discord_id, winners_pay))
-            text_output.append('%s earned %s%d for winning' % (winning_player.get_player_string(), jipeso_text, winners_pay))
+            text_output.append('%s earned [%s%d] for winning' % (winning_player.get_player_string(), jipeso_text, winners_pay))
 
+        # Give Jipesos to the losing Jipeso User
         losing_user = losing_player.get_jipeso_user()
         if losing_user != None:
             losing_user.balance += losers_pay
             print('User %s earned %d Jipesos for losing' % (losing_user.discord_id, losers_pay))
-            text_output.append('%s earned %s%d for trying' % (losing_player.get_player_string(), jipeso_text, losers_pay))
-            
+            text_output.append('%s earned [%s%d] for trying' % (losing_player.get_player_string(), jipeso_text, losers_pay))
+
+        # Skip if there's no bets
         if winner_bet_amount == 0.0 or total_bet_amount == 0.0:
             return
-        
+
+        # Award the bets earnings to winners
         for bet in self.bets:
             percent_of_pot = bet.amount / winner_bet_amount
             earnings = total_bet_amount * percent_of_pot
             
             bet.beter.balance += earnings
             print('User %s earned %d Jipesos in bettings' % (bet.beter.discord_id, earnings))
-            text_output.append('<@!%s> earned %s%d (%d%% of pot) in bettings. Their balance is now %s%d' % (bet.beter.discord_id, jipeso_text, earnings, percent_of_pot * 100, jipeso_text, bet.beter.balance))
+            text_output.append('<@!%s> earned [%s%d] (%d%% of pot) in bettings. Their balance is now [%s%d]' % (bet.beter.discord_id, jipeso_text, earnings, percent_of_pot * 100, jipeso_text, bet.beter.balance))
 
         save_jipeso_user_json()
         self.ended = True
