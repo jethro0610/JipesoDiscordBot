@@ -1,8 +1,9 @@
 import requests
 import json
 from jipesoclasses import SmashSet
+from jipesoclasses import Player
 
-def get_event_standings(phaseGroupId, smashggKey):
+def get_event_standings(phase_group_id, smashgg_key):
     url = 'https://api.smash.gg/gql/alpha'
     query = """
             {
@@ -34,22 +35,22 @@ def get_event_standings(phaseGroupId, smashggKey):
                     }
                 }
             }
-            """ % phaseGroupId
+            """ % phase_group_id
     json = {'query' : query }
-    headers = {'Authorization' : 'Bearer %s' % smashggKey}
+    headers = {'Authorization' : 'Bearer %s' % smashgg_key}
     output = requests.post(url, json = json, headers = headers)
     
     if output.json()['data']['phaseGroup'] == None:
         return None, None
     
-    eventSlug = output.json()['data']['phaseGroup']['phase']['event']['slug']
-    urlPhaseId = str(output.json()['data']['phaseGroup']['phase']['id'])
-    urlPhaseGroupId = str(output.json()['data']['phaseGroup']['id'])
-    bracketLink = 'https://smash.gg/' + eventSlug + '/brackets/' + urlPhaseId + '/' + urlPhaseGroupId
+    event_slug = output.json()['data']['phaseGroup']['phase']['event']['slug']
+    url_phase_id = str(output.json()['data']['phaseGroup']['phase']['id'])
+    url_phase_group_id = str(output.json()['data']['phaseGroup']['id'])
+    bracket_link = 'https://smash.gg/' + event_slug + '/brackets/' + url_phase_id + '/' + url_phase_group_id
     
-    return output.json()['data']['phaseGroup'], bracketLink
+    return output.json()['data']['phaseGroup'], bracket_link
     
-def get_gg_id(ggSlug, smashggKey):
+def get_gg_id(gg_id_slug, smashgg_key):
     url = 'https://api.smash.gg/gql/alpha'
     query = """
             {
@@ -59,16 +60,16 @@ def get_gg_id(ggSlug, smashggKey):
                     }
                 }
             }
-            """ % ggSlug
+            """ % gg_id_slug
     json = {'query' : query }
-    headers = {'Authorization' : 'Bearer %s' % smashggKey}
+    headers = {'Authorization' : 'Bearer %s' % smashgg_key}
     output = requests.post(url, json = json, headers = headers)
     if output.json()['data']['user'] != None:
         return output.json()['data']['user']['player']['id']
     else:
         return None
 
-def update_sets(smashSets, smashggKey, phaseGroupId):
+def update_sets(smash_sets, smashgg_key, phase_group_id):
     url = 'https://api.smash.gg/gql/alpha'
     query = """
             {
@@ -93,34 +94,34 @@ def update_sets(smashSets, smashggKey, phaseGroupId):
                     }
                 }
             }
-            """ % phaseGroupId
+            """ % phase_group_id
     json = {'query' : query }
-    headers = {'Authorization' : 'Bearer %s' % smashggKey}
+    headers = {'Authorization' : 'Bearer %s' % smashgg_key}
     output = requests.post(url, json = json, headers = headers)
-    jsonSets = output.json()['data']['phaseGroup']['sets']['nodes']
+    json_sets = output.json()['data']['phaseGroup']['sets']['nodes']
     
-    if jsonSets == None:
+    if json_sets == None:
         return
-
-    print("Poll")
     
-    for jsonSet in jsonSets:
-        if jsonSet['startedAt'] != None:
-            newSmashSet = None
-            if(jsonSet['id'] in smashSets):
-                newSmashSet = smashSets[jsonSet['id']]
+    for json_set in json_sets:
+        if json_set['startedAt'] != None:
+            new_smash_set = None
+            if(json_set['id'] in smash_sets):
+                new_smash_set = smash_sets[json_set['id']]
             else:
-                newSmashSet = SmashSet()
-                for slot in jsonSet['slots']:
-                    newSmashSet.players[slot['entrant']['id']] = {'name' : slot['entrant']['participants'][0]['player']['gamerTag'],
-                                                                  'ggId' : str(slot['entrant']['participants'][0]['player']['id'])}
+                new_smash_set = SmashSet()
+                for slot in json_set['slots']:
+                    name = slot['entrant']['participants'][0]['player']['gamerTag']
+                    gg_id = str(slot['entrant']['participants'][0]['player']['id'])
+                    set_id = str(slot['entrant']['id'])
+                    new_smash_set.players.append(Player(name, gg_id, set_id))
 
-            if jsonSet['winnerId'] != None:
-                if not jsonSet['id'] in smashSets:
-                    newSmashSet.ended = True
-                    newSmashSet.started = True
+            if json_set['winnerId'] != None:
+                if not json_set['id'] in smash_sets:
+                    new_smash_set.ended = True
+                    new_smash_set.started = True
                     
-                newSmashSet.ending = True
-                newSmashSet.winner = jsonSet['winnerId']
+                new_smash_set.ending = True
+                new_smash_set.winner_set_id = str(json_set['winnerId'])
                    
-            smashSets[jsonSet['id']] = newSmashSet
+            smash_sets[json_set['id']] = new_smash_set
