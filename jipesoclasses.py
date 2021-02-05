@@ -125,6 +125,7 @@ class SmashSet:
     def __init__(self):
         self.players = []
         self.bets = []
+        self.total_bets = 0.0
         self.start_time = 0
         self.started = False
         self.winner_set_id = None
@@ -132,22 +133,20 @@ class SmashSet:
         self.ended = False
 
     def discord_id_has_bet(self, discord_id):
-        for bet in bets:
+        for bet in self.bets:
             if bet.beter.discord_id == str(discord_id):
                 return True
         return False
     
     def end(self, jipeso_text = 'Jipesos'):
         text_output = []
-        total_bet_amount = 0.0
         winner_bet_amount = 0.0
         winner_int = -1
         loser_int = -1
         counter = 0
 
-        # Get the total amount for bets, and winning bets
+        # Get the total amount fof winning bets
         for bet in self.bets:
-            total_bet_amount += bet.amount
             if bet.prediction.set_id == self.winner_set_id:
                 winner_bet_amount += bet.amount
 
@@ -162,34 +161,34 @@ class SmashSet:
         losing_player = self.players[loser_int]
         winning_player = self.players[winner_int]
         
-        text_output.append('%s won the set. [%s%d] were side bet' % (winning_player.get_player_string(), jipeso_text, total_bet_amount))
+        text_output.append('%s won over %s | Total Sidebets: [%s%d]' % (winning_player.get_player_string(), losing_player.get_player_string(), jipeso_text, self.total_bets))
 
         # Give Jipesos to the winning Jipeso User
         winning_user = winning_player.get_jipeso_user()
         if winning_user != None:
             winning_user.balance += winners_pay
             print('User %s earned %d Jipesos for winning' % (winning_user.discord_id, winners_pay))
-            text_output.append('%s earned [+%s%d] for winning' % (winning_player.get_player_string(), jipeso_text, winners_pay))
+            text_output.append('%s won and earned [+%s%d]' % (winning_player.get_player_string(), jipeso_text, winners_pay))
 
         # Give Jipesos to the losing Jipeso User
         losing_user = losing_player.get_jipeso_user()
         if losing_user != None:
             losing_user.balance += losers_pay
             print('User %s earned %d Jipesos for losing' % (losing_user.discord_id, losers_pay))
-            text_output.append('%s earned [+%s%d] for trying' % (losing_player.get_player_string(), jipeso_text, losers_pay))
+            text_output.append('%s tried and got [+%s%d]' % (losing_player.get_player_string(), jipeso_text, losers_pay))
 
         # Skip if there's no bets
-        if winner_bet_amount == 0.0 or total_bet_amount == 0.0:
+        if winner_bet_amount == 0.0 or self.total_bets == 0.0:
             return
 
         # Award the bets earnings to winners
         for bet in self.bets:
             percent_of_pot = bet.amount / winner_bet_amount
-            earnings = total_bet_amount * percent_of_pot
+            earnings = self.total_bets * percent_of_pot
             
             bet.beter.balance += earnings
             print('User %s earned %d Jipesos in bettings' % (bet.beter.discord_id, earnings))
-            text_output.append('<@!%s> earned [+%s%d] (%d%% of pot) in bettings. Their balance is now [%s%d]' % (bet.beter.discord_id, jipeso_text, earnings, percent_of_pot * 100, jipeso_text, bet.beter.balance))
+            text_output.append('<@!%s> earned %d%% of the pot [+%s%d]' % (bet.beter.discord_id, percent_of_pot * 100, jipeso_text, earnings))
 
         save_jipeso_user_json()
         self.ended = True

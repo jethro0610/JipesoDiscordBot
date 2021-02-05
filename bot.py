@@ -107,22 +107,22 @@ async def bet(ctx, prediction_input, amount):
             return
     
         set_to_bet.bets.append(Bet(beter, prediction, amount)) # Add the bet to the set
+        set_to_bet.total_bets += amount
         beter.balance -= amount
         print('User %s placed a %d Jipeso bet on %s\s set vs. %s' %(ctx.author.id, amount, prediction.name, opponent.name))
-        await ctx.channel.send('<@!%s> placed a [-%s%d] bet on %s\'s set vs. %s. Their balance is now [%s%d]' %  (ctx.author.id,
-                                                                                                            jipeso_text,
-                                                                                                            amount,
-                                                                                                            prediction.get_player_string(),
-                                                                                                            opponent.get_player_string(),
-                                                                                                            jipeso_text,
-                                                                                                            beter.balance))
+        await ctx.channel.send('<@!%s> bet on %s beating %s [-%s%d]' % (ctx.author.id,
+                                                                        prediction.get_player_string(),
+                                                                        opponent.get_player_string(),
+                                                                        jipeso_text,
+                                                                        amount) +
+                               '\nTotal Sidebets: [%s%d]' % (jipeso_text, set_to_bet.total_bets))
     else:
         await ctx.channel.send('<@!%s> You already placed a bet on this set' % (ctx.author.id))
     save_jipeso_user_json()
     
 @commands.command()
 async def balance(ctx):
-    await ctx.channel.send('<@!%s> Your balance is [%s%d]' % (ctx.author.id, jipeso_text, get_jipeso_user_from_discord_id(ctx.author.id).balance))
+    await ctx.channel.send('<@!%s>\'s Balance: [%s%d]' % (ctx.author.id, jipeso_text, get_jipeso_user_from_discord_id(ctx.author.id).balance))
 
 @commands.command()
 async def linkgg(ctx, gg_id_slug):
@@ -281,7 +281,7 @@ async def pay(ctx, reciever_id, amount):
     reciever = get_jipeso_user_from_discord_id(reciever_id)
 
     if payer.balance < amount:
-        await ctx.channel.send('<@!%s> Your payment is more than your account balance [%s%d]' % (ctx.author.id, jipeso_text, payer.balance))
+        await ctx.channel.send('<@!%s> Payment is more than your balance [%s%d]' % (ctx.author.id, jipeso_text, payer.balance))
     
     payer.balance -= amount
     reciever.balance += amount
@@ -318,9 +318,9 @@ async def update_sets():
 
         # Finish complete sets
         if smash_set.ending == True and smash_set.ended == False:
-            end_string = '%s vs. %s ended' % (smash_set.players[0].get_player_string(), smash_set.players[1].get_player_string())
-            print(end_string)
-            await bets_channel.send(end_string)
+            #end_string = '%s vs. %s ended' % (smash_set.players[0].get_player_string(), smash_set.players[1].get_player_string())
+            #print(end_string)
+            #await bets_channel.send(end_string)
             
             bet_text_outputs = smash_set.end(jipeso_text)
             for text_output in bet_text_outputs:
