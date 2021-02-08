@@ -223,4 +223,50 @@ class Player:
             return self.get_jipeso_user().get_mention()
         else:
             return self.name
+
+def merge_users(left, right):
+    merge_array = []
+
+    # Keep sorting until elements run out in one of the arrays
+    while len(left) > 0 and len(right) > 0:
+        # Place the largest of the first elements of the users in the merged array
+        if left[0].balance > right[0].balance:
+            merge_array.append(left[0])
+            del left[0]
+        else:
+            merge_array.append(right[0])
+            del right[0]
+
+    # Add remaining elements to end of merge array
+    while len(left) > 0:
+        merge_array.append(left[0])
+        del left[0]
+        
+    while len(right) > 0:
+        merge_array.append(right[0])
+        del right[0]
+        
+    return merge_array
+
+def sort_users(users):
+    # Return if the array size is 1
+    if len(users) == 1:
+        return users
+    
+    # Find the middle of the array
+    middle = len(users)//2
+
+    # Split the array into two
+    left = users[:middle]
+    right = users[middle:]
+
+    # Recursively merge_sort the arrays
+    left = sort_users(left)
+    right = sort_users(right)
+
+    # Return the merged, sorted array
+    return merge_users(left, right)
+
+def get_sorted_users():
+    return sort_users(jipeso_users)
         

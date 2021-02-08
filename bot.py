@@ -20,6 +20,7 @@ from jipesoclasses import gg_id_to_discord_id
 
 from jipesoclasses import set_winners_pay
 from jipesoclasses import set_losers_pay
+from jipesoclasses import get_sorted_users
 
 config = None
 payouts = None
@@ -49,7 +50,7 @@ load_gg_id_json()
 # Create the bot
 bot = commands.Bot(command_prefix='!')
 
-@tasks.loop(seconds=120.0)
+@tasks.loop(seconds=1800.0)
 async def save_jipeso_user_json_loop():
     save_jipeso_user_json()
 
@@ -124,6 +125,22 @@ async def bet(ctx, prediction_input, amount):
 @commands.command()
 async def balance(ctx):
     await ctx.channel.send('<@!%s>\'s Balance: [%s%s]' % (ctx.author.id, jipeso_text, '{:.2f}'.format(get_jipeso_user_from_discord_id(ctx.author.id).balance)))
+
+@commands.command()
+async def balanceall(ctx):
+    rank = 0
+    output_text = ''
+    last_balance = -1
+    for user in get_sorted_users():
+        # Only increase the rank if a new balance is found (tie equal balances)
+        if user.balance != last_balance:
+            rank += 1
+            last_balance = user.balance
+
+        # Add the text to the output
+        output_text += str(rank) + '. ' + user.get_mention() + (' [%s%s]' % (jipeso_text, '{:.2f}'.format(user.balance))) + '\n'
+        
+    await ctx.channel.send(output_text)
 
 @commands.command()
 async def linkgg(ctx, gg_id_slug):
@@ -339,6 +356,7 @@ async def on_ready():
 
 bot.add_command(bet)
 bot.add_command(balance)
+bot.add_command(balanceall)
 bot.add_command(starttourney)
 bot.add_command(stoptourney)
 bot.add_command(stoptourneyresults)
