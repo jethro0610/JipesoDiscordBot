@@ -8,11 +8,11 @@ winners_pay = 0
 
 def set_winners_pay(new_pay):
     global winners_pay
-    winners_pay = new_pay
+    winners_pay = round(new_pay, 2)
 
 def set_losers_pay(new_pay):
     global losers_pay
-    losers_pay = new_pay
+    losers_pay = round(new_pay, 2)
 
 def gg_id_to_discord_id(gg_id):
     global gg_id_to_jipeso_user_dict
@@ -167,15 +167,15 @@ class SmashSet:
         winning_user = winning_player.get_jipeso_user()
         if winning_user != None:
             winning_user.balance += winners_pay
-            print('User %s earned %d Jipesos for winning' % (winning_user.discord_id, winners_pay))
-            text_output.append('%s won and earned [+%s%d]' % (winning_player.get_player_string(), jipeso_text, winners_pay))
+            print('User %s earned %s Jipesos for winning' % (winning_user.discord_id, '{:.2f}'.format(winners_pay)))
+            text_output.append('%s won and earned [+%s%s]' % (winning_player.get_player_string(), jipeso_text, '{:.2f'.format(winners_pay)))
 
         # Give Jipesos to the losing Jipeso User
         losing_user = losing_player.get_jipeso_user()
         if losing_user != None:
             losing_user.balance += losers_pay
-            print('User %s earned %d Jipesos for losing' % (losing_user.discord_id, losers_pay))
-            text_output.append('%s tried and got [+%s%d]' % (losing_player.get_player_string(), jipeso_text, losers_pay))
+            print('User %s earned %s Jipesos for losing' % (losing_user.discord_id, '{:.2f}'.format(losers_pay)))
+            text_output.append('%s tried and got [+%s%s]' % (losing_player.get_player_string(), jipeso_text, '{:.2f}'.format(losers_pay)))
 
         # Skip if there's no bets
         if winner_bet_amount == 0.0 or self.total_bets == 0.0:
@@ -185,10 +185,11 @@ class SmashSet:
         for bet in self.bets:
             percent_of_pot = bet.amount / winner_bet_amount
             earnings = self.total_bets * percent_of_pot
+            earnings = round(earnings, 2)
             
             bet.beter.balance += earnings
-            print('User %s earned %d Jipesos in bettings' % (bet.beter.discord_id, earnings))
-            text_output.append('<@!%s> earned %d%% of the pot [+%s%d]' % (bet.beter.discord_id, percent_of_pot * 100, jipeso_text, earnings))
+            print('User %s earned %s Jipesos in bettings' % (bet.beter.discord_id, '{:.2f}'.format(earnings)))
+            text_output.append('<@!%s> earned %d%% of the pot [+%s%s]' % (bet.beter.discord_id, percent_of_pot * 100, jipeso_text, '{:.2f}'.format(earnings)))
 
         save_jipeso_user_json()
         self.ended = True
