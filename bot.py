@@ -60,40 +60,51 @@ async def save_jipeso_user_json_loop():
 
 @commands.command()
 async def challenge(ctx, opponent_mention, amount):
+    # Make sure the amount is positive and round it to two decimals
+    amount = amount.replace('-','')
     amount = float(amount)
     amount = round(amount, 2)
+
+    # Get the challenger and opponent users
     challenger = get_jipeso_user_from_discord_id(ctx.author.id)
     opponent = get_jipeso_user_from_mention(opponent_mention)
+
+    if challenger.discord_id == opponent.discord_id:
+        await ctx.channel.send('<@!%s> Your can\'t challenge yourself' % ctx.author.id)
+        return
 
     if amount > challenger.balance:
         await ctx.channel.send('<@!%s> Your wager is more than your account balance [%s%s]' % (ctx.author.id, bot.jipeso_text, '{:.2f}'.format(challenger.balance)))
         return
 
+    # Skip if one of the players is already playing a set
     for smash_set_key in bot.smash_sets:
         smash_set = bot.smash_sets[smash_set_key]
         for player in smash_set.players:
             if player.get_jipeso_user().discord_id == challenger.discord_id:
-                await ctx.channel.send('<@!%s> Opponent is already in a set' % ctx.author.id)
+                await ctx.channel.send('<@!%s> You are already in a set' % ctx.author.id)
                 return
             if player.get_jipeso_user().discord_id == opponent.discord_id:
                 await ctx.channel.send('<@!%s> Opponent is already in a set' % ctx.author.id)
                 return
 
+    # Skip of one of the players is being challenged
     for challenge_set in bot.challenge_sets:
         for player in challenge_set.players:
             if player.get_jipeso_user().discord_id == challenger.discord_id:
-                await ctx.channel.send('<@!%s> Opponent is already being challenged' % ctx.author.id)
+                await ctx.channel.send('<@!%s> You are already being challenged' % ctx.author.id)
                 return
             if player.get_jipeso_user().discord_id == opponent.discord_id:
                 await ctx.channel.send('<@!%s> Opponent is already being challenged' % ctx.author.id)
                 return
 
+    # Create the player objects for the set
     challenging_player = Player('DISCORD PLAYER', challenger.discord_id, challenger.discord_id)
     opponent_player = Player('DISCORD PLAYER', opponent.discord_id, opponent.discord_id)
-
     challenging_player.jipeso_user = challenger
     opponent_player.jipeso_user = opponent
 
+    # Create the new set and add it to the challenges queue
     new_challenge_set = SmashSet()
     new_challenge_set.players.append(challenging_player)
     new_challenge_set.players.append(opponent_player)
@@ -150,7 +161,7 @@ async def reportwin(ctx):
 
 @commands.command()
 async def bet(ctx, prediction_input, amount):
-    # Make sure the amount is positive and make it an int
+    # Make sure the amount is positive and round it to two decimals
     amount = amount.replace('-','')
     amount = float(amount)
     amount = round(amount, 2)
