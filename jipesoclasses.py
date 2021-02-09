@@ -18,6 +18,17 @@ def gg_id_to_discord_id(gg_id):
     global gg_id_to_jipeso_user_dict
     return gg_id_to_jipeso_user_dict[gg_id]
 
+def discord_id_to_gg_id(discord_id):
+    discord_id = str(discord_id)
+    # Ensure the Discord ID exists
+    key_list = list(gg_id_to_jipeso_user_dict.keys())
+    val_list = list(gg_id_to_jipeso_user_dict.values())
+    if not discord_id in val_list:
+        print('no disc_id')
+        return None
+
+    return str(key_list[val_list.index(discord_id)])
+
 def mention_to_gg_id(mention):
     global gg_id_to_jipeso_user_dict
 
@@ -27,13 +38,7 @@ def mention_to_gg_id(mention):
     mention = mention.replace('!', '')
     mention = mention.replace('>', '')
 
-    # Ensure the Discord ID exists
-    key_list = list(gg_id_to_jipeso_user_dict.keys())
-    val_list = list(gg_id_to_jipeso_user_dict.values())
-    if not mention in val_list:
-        return
-
-    return str(key_list[val_list.index(mention)])
+    return discord_id_to_gg_id(mention)
 
 def create_new_jipeso_user(discord_id):
     global jippi_user_dict
@@ -76,6 +81,15 @@ def get_jipeso_user_from_discord_id(discord_id):
         create_new_jipeso_user(discord_id)
         
     return jipeso_users[jipeso_user_dict[discord_id]]
+
+def get_jipeso_user_from_mention(mention):
+    # Remove mention formatting
+    mention = mention.replace('<', '')
+    mention = mention.replace('@', '')
+    mention = mention.replace('!', '')
+    mention = mention.replace('>', '')
+
+    return get_jipeso_user_from_discord_id(mention)
 
 def add_gg_id_to_jipeso_user(gg_id, discord_id):
     global gg_id_to_jipeso_user_dict
@@ -131,6 +145,7 @@ class SmashSet:
         self.winner_set_id = None
         self.ending = False
         self.ended = False
+        self.wager = -1
 
     def discord_id_has_bet(self, discord_id):
         for bet in self.bets:
@@ -161,25 +176,32 @@ class SmashSet:
         losing_player = self.players[loser_int]
         winning_player = self.players[winner_int]
         
-        text_output.append('%s won over %s | Total Sidebets: [%s%d]' % (winning_player.get_player_string(), losing_player.get_player_string(), jipeso_text, self.total_bets))
+        text_output.append('%s won over %s | Total Sidebets: [%s%s]' % (winning_player.get_player_string(), losing_player.get_player_string(), jipeso_text, '{:.2f}'.format(self.total_bets)))
 
         # Give Jipesos to the winning Jipeso User
         winning_user = winning_player.get_jipeso_user()
         if winning_user != None:
-            winning_user.balance += winners_pay
-            print('User %s earned %s Jipesos for winning' % (winning_user.discord_id, '{:.2f}'.format(winners_pay)))
-            text_output.append('%s won and earned [+%s%s]' % (winning_player.get_player_string(), jipeso_text, '{:.2f'.format(winners_pay)))
+            winning_amount = 0
+            if self.wager == -1:
+                winning_amount = winners_pay
+            else:
+                winning_amount = self.wager * 2.0
+
+            winning_user.balance += winning_amount
+            print('User %s earned %s Jipesos for winning' % (winning_user.discord_id, '{:.2f}'.format(winning_amount)))
+            text_output.append('%s won and earned [+%s%s]' % (winning_player.get_player_string(), jipeso_text, '{:.2f}'.format(winning_amount)))
 
         # Give Jipesos to the losing Jipeso User
         losing_user = losing_player.get_jipeso_user()
-        if losing_user != None:
+        if losing_user != None and self.wager == -1:
             losing_user.balance += losers_pay
             print('User %s earned %s Jipesos for losing' % (losing_user.discord_id, '{:.2f}'.format(losers_pay)))
             text_output.append('%s tried and got [+%s%s]' % (losing_player.get_player_string(), jipeso_text, '{:.2f}'.format(losers_pay)))
 
         # Skip if there's no bets
         if winner_bet_amount == 0.0 or self.total_bets == 0.0:
-            return
+            self.ended = True
+            return text_output
 
         # Award the bets earnings to winners
         for bet in self.bets:
@@ -214,9 +236,11 @@ class Player:
         self.name = name
         self.gg_id = str(gg_id)
         self.set_id = set_id
+        self.jipeso_user = get_jipeso_user_from_gg_id(self.gg_id)
 
     def get_jipeso_user(self):
-        return get_jipeso_user_from_gg_id(self.gg_id)
+        return self.jipeso_user
+        #return get_jipeso_user_from_gg_id(self.gg_id)
     
     def get_player_string(self):
         if self.get_jipeso_user() != None:
