@@ -17,7 +17,6 @@ from jipesoclasses import add_gg_id_to_jipeso_user
 from jipesoclasses import get_jipeso_user_from_gg_id
 from jipesoclasses import get_jipeso_user_from_discord_id
 from jipesoclasses import get_jipeso_user_from_mention
-from jipesoclasses import mention_to_gg_id
 from jipesoclasses import gg_id_to_discord_id
 from jipesoclasses import discord_id_to_gg_id
 
@@ -80,6 +79,9 @@ async def challenge(ctx, opponent_mention, amount):
     # Skip if one of the players is already playing a set
     for smash_set_key in bot.smash_sets:
         smash_set = bot.smash_sets[smash_set_key]
+        if smash_set.ended == True:
+            continue
+
         for player in smash_set.players:
             if player.get_jipeso_user().discord_id == challenger.discord_id:
                 await ctx.channel.send('<@!%s> You are already in a set' % ctx.author.id)
@@ -127,7 +129,7 @@ async def accept(ctx):
             bot.challenge_sets.remove(challenge_set)
             bot.smash_sets['ds' + str(len(bot.smash_sets))] = challenge_set
             accepting_user.balance -= challenge_set.wager
-            await ctx.channel.send('<@!%s> accepted <@!%s>\'s challenge for [-%s%s]' %   (accepting_user.discord_id, 
+            await ctx.channel.send('<@!%s> accepted <@!%s>\'s challenge for [-%s%s]' %  (accepting_user.discord_id, 
                                                                                         opponent_user.discord_id, 
                                                                                         bot.jipeso_text,
                                                                                         '{:.2f}'.format(challenge_set.wager)))
@@ -142,10 +144,10 @@ async def decline(ctx):
         if declining_user.discord_id == str(ctx.author.id):
             bot.challenge_sets.remove(challenge_set)
             opponent_user.balance += challenge_set.wager
-            await ctx.channel.send('<@!%s> declined <@!%s>\'s challenge. Refunded [+%s%s]' %   (declining_user.discord_id, 
-                                                                                        opponent_user.discord_id, 
-                                                                                        bot.jipeso_text,
-                                                                                        '{:.2f}'.format(challenge_set.wager)))
+            await ctx.channel.send('<@!%s> declined <@!%s>\'s challenge. Refunded [+%s%s]' %    (declining_user.discord_id, 
+                                                                                                opponent_user.discord_id, 
+                                                                                                bot.jipeso_text,
+                                                                                                '{:.2f}'.format(challenge_set.wager)))
             save_jipeso_user_json()
             return
 
@@ -356,7 +358,7 @@ async def pay_results(message_channel):
         result_jipeso_user = get_jipeso_user_from_gg_id(result_player.gg_id)
         if result_jipeso_user != None and total_payout != 0:
             result_jipeso_user.balance += total_payout
-            output_string += ' [+%s%s]' % (bot.jipeso_text, '{:.2f'.format(total_payout))
+            output_string += ' [+%s%s]' % (bot.jipeso_text, '{:.2f}'.format(total_payout))
             print('Payed out User %s Jipesos to %s for ranking %s in the tournament' % ('{:.2f}'.format(total_payout), result_jipeso_user.discord_id, placement))
 
         output_string += '\n'

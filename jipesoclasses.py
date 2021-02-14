@@ -205,6 +205,9 @@ class SmashSet:
 
         # Award the bets earnings to winners
         for bet in self.bets:
+            if bet.prediction.set_id != self.winner_set_id:
+                continue
+            
             percent_of_pot = bet.amount / winner_bet_amount
             earnings = self.total_bets * percent_of_pot
             earnings = round(earnings, 2)
