@@ -205,16 +205,23 @@ class SmashSet:
 
         # Award the bets earnings to winners
         for bet in self.bets:
+            # Skip if the bet is losing
             if bet.prediction.set_id != self.winner_set_id:
                 continue
             
             percent_of_pot = bet.amount / winner_bet_amount
             earnings = self.total_bets * percent_of_pot
             earnings = round(earnings, 2)
+            bonus_string = ''
             
+            # Double earnings if 80% of pot is bet
+            if percent_of_pot >= 0.8:
+                earnings *= 2.0
+                bonus_string = ' with a 2x bonus '
+
             bet.beter.balance += earnings
             print('User %s earned %s Jipesos in bettings' % (bet.beter.discord_id, '{:.2f}'.format(earnings)))
-            text_output.append('<@!%s> earned %d%% of the pot [+%s%s]' % (bet.beter.discord_id, percent_of_pot * 100, jipeso_text, '{:.2f}'.format(earnings)))
+            text_output.append(('<@!%s> earned %s%% of the pot' + bonus_string + '[+%s%s]') % (bet.beter.discord_id, '{:.2f}'.format(percent_of_pot * 100), jipeso_text, '{:.2f}'.format(earnings)))
 
         save_jipeso_user_json()
         self.ended = True
